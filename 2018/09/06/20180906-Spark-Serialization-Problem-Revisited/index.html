@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>20180906 Spark Serialization Problem Revisited | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="嵌套内部类可能会引起序列化问题1234567891011121314151617181920212223242526272829303132333435public class SparkLocalTest &amp;#123;    @Test    public void localTest() &amp;#123;        SparkSession spark = SparkSession.build">
+<meta name="keywords" content="Spark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20180906 Spark Serialization Problem Revisited">
+<meta property="og:url" content="http://perfectday20.me/2018/09/06/20180906-Spark-Serialization-Problem-Revisited/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="嵌套内部类可能会引起序列化问题1234567891011121314151617181920212223242526272829303132333435public class SparkLocalTest &amp;#123;    @Test    public void localTest() &amp;#123;        SparkSession spark = SparkSession.build">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2018-09-06T00:20:46.306Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="20180906 Spark Serialization Problem Revisited">
+<meta name="twitter:description" content="嵌套内部类可能会引起序列化问题1234567891011121314151617181920212223242526272829303132333435public class SparkLocalTest &amp;#123;    @Test    public void localTest() &amp;#123;        SparkSession spark = SparkSession.build">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20&#39;s Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-20180906-Spark-Serialization-Problem-Revisited" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/09/06/20180906-Spark-Serialization-Problem-Revisited/" class="article-date">
+  <time datetime="2018-09-06T00:20:30.000Z" itemprop="datePublished">2018-09-06</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      20180906 Spark Serialization Problem Revisited
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>嵌套内部类可能会引起序列化问题<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SparkLocalTest</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">localTest</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        SparkSession spark = SparkSession.builder().master(<span class="string">"local"</span>).getOrCreate();</span><br><span class="line">        Dataset&lt;Row&gt; ds = spark.range(<span class="number">1000</span>).toDF();</span><br><span class="line">        ds.transform(flat2()).show(); <span class="comment">// 正常</span></span><br><span class="line">        ds.transform(flat1()).show(); <span class="comment">// 报错</span></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Function1&lt;Dataset&lt;Row&gt;, Dataset&lt;Row&gt;&gt; flat1() &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> AbstractFunction1&lt;Dataset&lt;Row&gt;, Dataset&lt;Row&gt;&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Dataset&lt;Row&gt; <span class="title">apply</span><span class="params">(Dataset&lt;Row&gt; v1)</span> </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> v1.flatMap(<span class="keyword">new</span> FlatMapFunction&lt;Row, String&gt;() &#123;</span><br><span class="line">                    <span class="meta">@Override</span></span><br><span class="line">                    <span class="function"><span class="keyword">public</span> Iterator&lt;String&gt; <span class="title">call</span><span class="params">(Row row)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                        <span class="keyword">return</span> Stream.of(<span class="string">""</span> + row.getLong(<span class="number">0</span>)).iterator();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;, Encoders.STRING()).toDF();</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="comment">// 与上面的方法区别仅在于使用了 lambda 简化代码</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Function1&lt;Dataset&lt;Row&gt;, Dataset&lt;Row&gt;&gt; flat2() &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> AbstractFunction1&lt;Dataset&lt;Row&gt;, Dataset&lt;Row&gt;&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Dataset&lt;Row&gt; <span class="title">apply</span><span class="params">(Dataset&lt;Row&gt; v1)</span> </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> v1.flatMap((FlatMapFunction&lt;Row, String&gt;) row -&gt; Stream.of(<span class="string">""</span> + row.getLong(<span class="number">0</span>)).iterator(),</span><br><span class="line">                                  Encoders.STRING()).toDF();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>虽然两个方法都是静态的，但是编译后会产生多个 class 文件：<br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SparkLocalTest$1.class</span><br><span class="line">SparkLocalTest$1$1.class</span><br><span class="line">SparkLocalTest$2.class</span><br><span class="line">SparkLocalTest.class</span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>transform 方法定义 <code>def transform[U](t: Dataset[T] =&gt; Dataset[U]): Dataset[U] = t(this)</code>，所以是用 flat 方法在 driver 端产生了一个 Function 对象并仅在 driver 端使用，所以该 Function 对象可以不实现序列化</li>
+<li>flat1 由于嵌套，产生了两个文件，而且内部类 <code>SparkLocalTest$1$1</code> 还引用了外部类 <code>SparkLocalTest$1.class</code>，由于外部类是 AbstractFunction1 的子类，并没有实现序列化接口，由于要发送到 executor 进行操作，所以使用时会报错 <code>Task not serializable: java.io.NotSerializableException: SparkLocalTest$1</code></li>
+<li>而 flat2 中的 lambda 编译后是静态域，<code>private static java.lang.Object $deserializeLambda$(java.lang.invoke.SerializedLambda);</code> 就没有序列化问题</li>
+<li>另一种方案是创建一个实现序列化的类：<code>abstract static class SerializableFunction1&lt;T1, R&gt; extends AbstractFunction1&lt;T1, R&gt; implements Serializable</code></li>
+</ul>
+<hr>
+<p> 从 <a href="https://www.yihangho.com/java-nested-classes-behind-the-scenes/" target="_blank" rel="noopener">Java Nested Classes: Behind the Scenes</a> 学到的：</p>
+<ul>
+<li>内部类其实就是一种语法糖，对于 JVM 来说是透明的，JVM 看到的就是普通的类</li>
+<li>编译器在编译时将内部类提取出来，因为要访问包围类的域，所以内部类要保存包围类的引用</li>
+<li>当包围类的域是 private 的，包围类会产生一个静态访问方法供内部类使用；否则会直接通过引用访问</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/09/06/20180906-Spark-Serialization-Problem-Revisited/" data-id="ck77f00xw001iu7wgy1iuohna" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/09/06/20180906-Spark-Serialization-Problem-Revisited/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/09/08/20180908-Variance-in-Scala/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          20180908 Variance in Scala
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/09/05/20180905-利用窗口函数给-group-数据打标签/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">20180905 利用窗口函数给 group 数据打标签</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 10px;">Airflow</a> <a href="/tags/Java/" style="font-size: 15px;">Java</a> <a href="/tags/Python/" style="font-size: 10px;">Python</a> <a href="/tags/Scala/" style="font-size: 17.5px;">Scala</a> <a href="/tags/Shell/" style="font-size: 12.5px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/02/29/20200229-性能优化总结/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-原理/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/30/20190130-Python-Cyclic-Import-Problem/">20190130 Python Cyclic Import Problem</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/07/20180107-Spark-任务优化方案/">20190107 Spark 任务优化方案</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 Zhang Zhen<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2018/09/06/20180906-Spark-Serialization-Problem-Revisited/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

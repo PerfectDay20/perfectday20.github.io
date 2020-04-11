@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>20180817 Spark Logging | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="以下为魔改版 Spark 的使用情况，并不一定适用于官方版本  最简单的方法，不配置其它日志选项，直接修改 conf/log4j.properties，配置 Appender 为 System.out 或 err，可以在 yarn web 的 Application Master 一栏的 logs 中看到 stdout 和 stderr 的日志记录，这个是 AM container 的日志 麻烦点">
+<meta name="keywords" content="Spark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20180817 Spark Logging">
+<meta property="og:url" content="http://perfectday20.me/2018/08/19/20180817-Spark-Logging/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="以下为魔改版 Spark 的使用情况，并不一定适用于官方版本  最简单的方法，不配置其它日志选项，直接修改 conf/log4j.properties，配置 Appender 为 System.out 或 err，可以在 yarn web 的 Application Master 一栏的 logs 中看到 stdout 和 stderr 的日志记录，这个是 AM container 的日志 麻烦点">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2018-08-19T13:30:43.183Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="20180817 Spark Logging">
+<meta name="twitter:description" content="以下为魔改版 Spark 的使用情况，并不一定适用于官方版本  最简单的方法，不配置其它日志选项，直接修改 conf/log4j.properties，配置 Appender 为 System.out 或 err，可以在 yarn web 的 Application Master 一栏的 logs 中看到 stdout 和 stderr 的日志记录，这个是 AM container 的日志 麻烦点">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20&#39;s Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-20180817-Spark-Logging" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/08/19/20180817-Spark-Logging/" class="article-date">
+  <time datetime="2018-08-19T13:30:15.000Z" itemprop="datePublished">2018-08-19</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      20180817 Spark Logging
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>以下为魔改版 Spark 的使用情况，并不一定适用于官方版本</p>
+<ol>
+<li>最简单的方法，不配置其它日志选项，直接修改 conf/log4j.properties，配置 Appender 为 System.out 或 err，可以在 yarn web 的 Application Master 一栏的 logs 中看到 stdout 和 stderr 的日志记录，这个是 AM container 的日志</li>
+<li>麻烦点可以在 spark-defaults.conf 或者 spark-submit 时传入 -Dlog4j.configuration=some-log4j.properties，不用在 spark-submit 配置 –files=path/some-log4j.properties </li>
+<li>但是如果只配置 Appender 为 RollingFile，在以上是看不到日志的（因为是yarn收集的 stdout 和 stderr 的日志？）</li>
+<li>在 SparkUI 中的 executors 的 logs 一栏中，stdout 是 executor 执行 println 代码的输出，网址为“/stdout?start=-4096”；而 stderr 因为网址有误为 “spark.log?start=-4096“ 导致没有东西，改为”/stderr?start=-4096“ 即可看到 container 的日志</li>
+<li>在 client 模式下，可以使用 File Appender，用于保存日志</li>
+<li>在 cluster 模式下，使用 console Appender 可在 yarn 中看到日志，但是本地也会有一些状态输出</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>spark-defaults.conf</th>
+<th>spark-submit</th>
+<th>jar-resources</th>
+<th>driver 效果</th>
+<th>executor 效果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>不设置-Dlog4j.configuration=log4j.properties</td>
+<td>没有 –files</td>
+<td>没有log4j.properties</td>
+<td>使用conf下的配置</td>
+<td>未生效</td>
+</tr>
+<tr>
+<td>设置 spark.executor.extraJavaOptions -Dlog4j.configuration=log4j.properties</td>
+<td>没有 –files</td>
+<td>没有log4j.properties</td>
+<td>使用conf下的配置</td>
+<td>未生效</td>
+</tr>
+<tr>
+<td>设置 spark.executor.extraJavaOptions -Dlog4j.configuration=log4j.properties</td>
+<td>有 –files</td>
+<td>没有log4j.properties</td>
+<td>使用conf下的配置</td>
+<td>未生效</td>
+</tr>
+<tr>
+<td>不设置 spark.executor.extraJavaOptions</td>
+<td>没有 –files</td>
+<td>有log4j.properties</td>
+<td>使用conf下的配置</td>
+<td>未生效</td>
+</tr>
+<tr>
+<td>不设置 spark.executor.extraJavaOptions</td>
+<td>有 –files</td>
+<td>没有log4j.properties</td>
+<td>client 使用conf下的配置, cluster 使用上传的配置</td>
+<td>未生效</td>
+</tr>
+</tbody>
+</table>
+<p>总之 driver 配置容易改，executor 配置不知道怎么改……<br>executor 一直读取 spark core 中 /org/apache/spark/log4j-defaults.properties 的配置</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/08/19/20180817-Spark-Logging/" data-id="ck77f00xt001cu7wgdemgeswx" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/08/19/20180817-Spark-Logging/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/08/19/20180819-Login-Shell-Variable/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          20180819 Login Shell &amp; Variable
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/08/11/20180811/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">20180811</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 10px;">Airflow</a> <a href="/tags/Java/" style="font-size: 15px;">Java</a> <a href="/tags/Python/" style="font-size: 10px;">Python</a> <a href="/tags/Scala/" style="font-size: 17.5px;">Scala</a> <a href="/tags/Shell/" style="font-size: 12.5px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/02/29/20200229-性能优化总结/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-原理/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/30/20190130-Python-Cyclic-Import-Problem/">20190130 Python Cyclic Import Problem</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/07/20180107-Spark-任务优化方案/">20190107 Spark 任务优化方案</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 Zhang Zhen<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2018/08/19/20180817-Spark-Logging/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

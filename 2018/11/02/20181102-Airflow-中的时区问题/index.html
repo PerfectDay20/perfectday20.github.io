@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>20181102 Airflow 中的时区问题 | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="TL;DR：在北京时间，想要在 0:00~8:00 每日触发任务且代码中需要使用执行日期，则需使用 next_ds 或 tomorrow_ds 来避免日期偏差问题。  Airflow 支持时区设定，但内部处理时间的时候都是转换成 UTC 的，所以在按天进行调度的时候，可能会有显示时间不一致的问题。 比如我们希望每天早上 9:00 的时候运行昨天一天的任务，无论是按照文档中写的创建一个带时区的 st">
+<meta name="keywords" content="Airflow">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20181102 Airflow 中的时区问题">
+<meta property="og:url" content="http://perfectday20.me/2018/11/02/20181102-Airflow-中的时区问题/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="TL;DR：在北京时间，想要在 0:00~8:00 每日触发任务且代码中需要使用执行日期，则需使用 next_ds 或 tomorrow_ds 来避免日期偏差问题。  Airflow 支持时区设定，但内部处理时间的时候都是转换成 UTC 的，所以在按天进行调度的时候，可能会有显示时间不一致的问题。 比如我们希望每天早上 9:00 的时候运行昨天一天的任务，无论是按照文档中写的创建一个带时区的 st">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2018-11-02T00:41:25.470Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="20181102 Airflow 中的时区问题">
+<meta name="twitter:description" content="TL;DR：在北京时间，想要在 0:00~8:00 每日触发任务且代码中需要使用执行日期，则需使用 next_ds 或 tomorrow_ds 来避免日期偏差问题。  Airflow 支持时区设定，但内部处理时间的时候都是转换成 UTC 的，所以在按天进行调度的时候，可能会有显示时间不一致的问题。 比如我们希望每天早上 9:00 的时候运行昨天一天的任务，无论是按照文档中写的创建一个带时区的 st">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20&#39;s Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-20181102-Airflow-中的时区问题" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/11/02/20181102-Airflow-中的时区问题/" class="article-date">
+  <time datetime="2018-11-02T00:39:14.000Z" itemprop="datePublished">2018-11-02</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      20181102 Airflow 中的时区问题
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>TL;DR：在北京时间，想要在 0:00~8:00 每日触发任务且代码中需要使用执行日期，则需使用 <code>next_ds</code> 或 <code>tomorrow_ds</code> 来避免日期偏差问题。</p>
+<hr>
+<p>Airflow 支持时区设定，但内部处理时间的时候都是转换成 UTC 的，所以在按天进行调度的时候，可能会有显示时间不一致的问题。</p>
+<p>比如我们希望每天早上 9:00 的时候运行昨天一天的任务，无论是按照文档中写的创建一个带时区的 start_date：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> pendulum</span><br><span class="line"></span><br><span class="line">local_tz = pendulum.timezone(<span class="string">"Asia/Shanghai"</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> DAG(dag_id=<span class="string">'test_timezone'</span>,</span><br><span class="line">         schedule_interval=<span class="string">'0 9 * * *'</span>,</span><br><span class="line">         start_date=datetime(<span class="number">2018</span>, <span class="number">10</span>, <span class="number">20</span>, tzinfo=local_tz),</span><br><span class="line">         catchup=<span class="keyword">True</span></span><br><span class="line">         ) <span class="keyword">as</span> dag:</span><br></pre></td></tr></table></figure></p>
+<p>还是直接转换成 UTC 的时间，即 1:00，对应 +8 区的 9:00<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">with</span> DAG(dag_id=<span class="string">'test_timezone'</span>,</span><br><span class="line">         schedule_interval=<span class="string">'0 1 * * *'</span>,</span><br><span class="line">         start_date=datetime(<span class="number">2018</span>, <span class="number">10</span>, <span class="number">20</span>),</span><br><span class="line">         catchup=<span class="keyword">True</span></span><br><span class="line">         ) <span class="keyword">as</span> dag:</span><br></pre></td></tr></table></figure></p>
+<p>这时任务执行中，使用 <code>ds</code> 都是没有问题的，比如处理 2018-10-31 的数据，<code>ds</code> 也会被渲染成 2018-10-31，因为在 2018-11-01 09:00:00+08:00 对应的 UTC 时间是 2018-11-01 01:00:00+00:00，此时两者的日期是一样的。</p>
+<p>但假如我们想每天早上 7:00 执行任务，这时 2018-11-01 07:00:00+08:00 对应的 UTC 时间就是 2018-10-31 23:00:00+00:00，此时 <code>ds</code> 会被渲染成 2018-10-31，所以假如代码中依赖了执行日期，则需要使用 <code>next_ds</code> 或 <code>tomorrow_ds</code> 来避免日期偏差问题。</p>
+<p>在内部，marcos 中的这些时间都是通过 <code>execution_date</code> 进行格式转换输出的，而 <code>execution_date</code> 是在 <code>TaskInstance.__init__()</code> 中被转换成 UTC 时间的，无论是设定了 start_date 的时区，还是直接修改了 Airflow 的默认时区。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/11/02/20181102-Airflow-中的时区问题/" data-id="ck77f00y2001vu7wgbnnnu9cp" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/11/02/20181102-Airflow-中的时区问题/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Airflow/">Airflow</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/11/25/20181125-高效学习方法总结/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          20181125 高效学习方法总结
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/10/14/20181014-Airflow-tips/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">20181014 Airflow tips</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 10px;">Airflow</a> <a href="/tags/Java/" style="font-size: 15px;">Java</a> <a href="/tags/Python/" style="font-size: 10px;">Python</a> <a href="/tags/Scala/" style="font-size: 17.5px;">Scala</a> <a href="/tags/Shell/" style="font-size: 12.5px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/02/29/20200229-性能优化总结/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-原理/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/30/20190130-Python-Cyclic-Import-Problem/">20190130 Python Cyclic Import Problem</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/07/20180107-Spark-任务优化方案/">20190107 Spark 任务优化方案</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 Zhang Zhen<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2018/11/02/20181102-Airflow-中的时区问题/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>
