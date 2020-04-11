@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>20180916 Dataset.col(colName) 无法区分衍生表的列 | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="问题：若数据集1产生数据集2，则两者进行 join 然后使用 ds.col(colName) select 的时候结果中的列可能并非想选择的，例如想选择 left outer join 后右表的同名列： 1234567891011121314151617181920212223242526272829303132333435363738394041object ScalaTest &amp;#123;">
+<meta name="keywords" content="Spark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20180916 Dataset.col(colName) 无法区分衍生表的列">
+<meta property="og:url" content="http://perfectday20.me/2018/09/16/20180916-Dataset-col-colName-无法区分衍生表的列/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="问题：若数据集1产生数据集2，则两者进行 join 然后使用 ds.col(colName) select 的时候结果中的列可能并非想选择的，例如想选择 left outer join 后右表的同名列： 1234567891011121314151617181920212223242526272829303132333435363738394041object ScalaTest &amp;#123;">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2018-09-16T11:34:49.904Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="20180916 Dataset.col(colName) 无法区分衍生表的列">
+<meta name="twitter:description" content="问题：若数据集1产生数据集2，则两者进行 join 然后使用 ds.col(colName) select 的时候结果中的列可能并非想选择的，例如想选择 left outer join 后右表的同名列： 1234567891011121314151617181920212223242526272829303132333435363738394041object ScalaTest &amp;#123;">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20&#39;s Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-20180916-Dataset-col-colName-无法区分衍生表的列" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/09/16/20180916-Dataset-col-colName-无法区分衍生表的列/" class="article-date">
+  <time datetime="2018-09-16T11:34:36.000Z" itemprop="datePublished">2018-09-16</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      20180916 Dataset.col(colName) 无法区分衍生表的列
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="问题："><a href="#问题：" class="headerlink" title="问题："></a>问题：</h3><p>若数据集1产生数据集2，则两者进行 join 然后使用 ds.col(colName) select 的时候结果中的列可能并非想选择的，例如想选择 left outer join 后右表的同名列：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">ScalaTest</span> </span>&#123;</span><br><span class="line">  <span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Item</span>(<span class="params">cuid: <span class="type">String</span>, query: <span class="type">String</span></span>)</span></span><br><span class="line"><span class="class">  <span class="title">def</span> <span class="title">main</span>(<span class="params">args: <span class="type">Array</span>[<span class="type">String</span>]</span>)</span>: <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> spark = <span class="type">SparkSession</span>.builder().master(<span class="string">"local"</span>).getOrCreate()</span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line">    <span class="keyword">val</span> ds1 = spark.range(<span class="number">2</span>)</span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//| id|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//|  0|</span></span><br><span class="line">    <span class="comment">//|  1|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="keyword">val</span> ds2 = ds1.filter(<span class="symbol">'id</span> &lt; <span class="number">1</span>)</span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//| id|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//|  0|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="keyword">val</span> ds3 =  ds1.join(ds2, ds1.col(<span class="string">"id"</span>) === ds2.col(<span class="string">"id"</span>), <span class="string">"left_outer"</span>)</span><br><span class="line">    <span class="comment">//+---+----+</span></span><br><span class="line">    <span class="comment">//| id|  id|</span></span><br><span class="line">    <span class="comment">//+---+----+</span></span><br><span class="line">    <span class="comment">//|  0|   0|</span></span><br><span class="line">    <span class="comment">//|  1|null|</span></span><br><span class="line">    <span class="comment">//+---+----+</span></span><br><span class="line">    <span class="keyword">val</span> ds4 = ds3.select(ds1.col(<span class="string">"id"</span>)) <span class="comment">// 选取第一列</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//| id|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//|  0|</span></span><br><span class="line">    <span class="comment">//|  1|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="keyword">val</span> ds5 = ds3.select(ds2.col(<span class="string">"id"</span>)) <span class="comment">// 原意是选取第二列，但结果还是第一列</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//| id|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//|  0|</span></span><br><span class="line">    <span class="comment">//|  1|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>ds2 由 ds1 衍生，其中 <code>ds1.col(&quot;id&quot;) === ds2.col(&quot;id&quot;)</code> 这一句会产生警告<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">WARN Column: Constructing trivially true equals predicate, &apos;id#0L = id#0L&apos;. Perhaps you need to use aliases.</span><br></pre></td></tr></table></figure></p>
+<p>实际上这两个 column 的对象是同一个，在 Column 的 <code>===</code> 方法中会输出这一句警告。假如直接按照语义处理则会变成笛卡尔积的形式，这也是早期版本的处理方式，如 <a href="https://stackoverflow.com/questions/32190828/spark-sql-performing-carthesian-join-instead-of-inner-join/32191266" target="_blank" rel="noopener">这个问题</a> 中的情况，而后来 Dataset.join 中会特殊处理成 self equal join on key。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">def join(right: Dataset[_], joinExprs: Column, joinType: String): DataFrame = &#123;</span><br><span class="line">  // Note that in this function, we introduce a hack in the case of self-join to automatically</span><br><span class="line">  // resolve ambiguous join conditions into ones that might make sense [SPARK-6231].</span><br><span class="line">  // Consider this case: df.join(df, df(&quot;key&quot;) === df(&quot;key&quot;))</span><br><span class="line">  // Since df(&quot;key&quot;) === df(&quot;key&quot;) is a trivially true condition, this actually becomes a</span><br><span class="line">  // cartesian join. However, most likely users expect to perform a self join using &quot;key&quot;.</span><br><span class="line">  // With that assumption, this hack turns the trivially true condition into equality on join</span><br><span class="line">  // keys that are resolved to both sides.</span><br></pre></td></tr></table></figure></p>
+<p>所以上面的 ds3 是符合我们预期的，但 ds5 选择的也是 ds3 的第一列，因为 <code>ds1.col(&quot;id&quot;)</code> 与 <code>ds2.col(&quot;id&quot;)</code> 是同一个对象，所以 ds5 结果与 ds4 相同；利用 explain 可看出这一点：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">== Physical Plan == // ds1</span><br><span class="line">*Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds2</span><br><span class="line">*Filter (id#0L &lt; 1)</span><br><span class="line">+- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds3</span><br><span class="line">*BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">:- *Range (0, 2, step=1, splits=1)</span><br><span class="line">+- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">   +- *Filter (id#4L &lt; 1)</span><br><span class="line">      +- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds4</span><br><span class="line">*Project [id#0L]</span><br><span class="line">+- *BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">   :- *Range (0, 2, step=1, splits=1)</span><br><span class="line">   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">      +- *Filter (id#4L &lt; 1)</span><br><span class="line">         +- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds5</span><br><span class="line">*Project [id#0L]</span><br><span class="line">+- *BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">   :- *Range (0, 2, step=1, splits=1)</span><br><span class="line">   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">      +- *Filter (id#4L &lt; 1)</span><br><span class="line">         +- *Range (0, 2, step=1, splits=1)</span><br></pre></td></tr></table></figure></p>
+<hr>
+<h3 id="解决办法："><a href="#解决办法：" class="headerlink" title="解决办法："></a>解决办法：</h3><ol>
+<li>利用 withColumnRenamed 或 as 重命名，新列名可以与原来相同，只是借助重命名这个动作使其产生一个新的引用对象<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> ds2 = ds1.filter(<span class="symbol">'id</span> &lt; <span class="number">1</span>).withColumn(<span class="string">"id"</span>,<span class="symbol">'id</span>)</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>此时执行计划就发生了改变，可以看出这一次 ds4 输出的是列 [id#0L]，而 ds5 是 [id#4L]，正好分别是 ds3 中的两列。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">== Physical Plan == // ds1</span><br><span class="line">*Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds2</span><br><span class="line">*Filter (id#0L &lt; 1)</span><br><span class="line">+- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds3</span><br><span class="line">*BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">:- *Range (0, 2, step=1, splits=1)</span><br><span class="line">+- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">   +- *Project [id#0L AS id#4L]</span><br><span class="line">      +- *Filter (id#0L &lt; 1)</span><br><span class="line">         +- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds4</span><br><span class="line">*Project [id#0L]</span><br><span class="line">+- *BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">   :- *Range (0, 2, step=1, splits=1)</span><br><span class="line">   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">      +- *Project [id#0L AS id#4L]</span><br><span class="line">         +- *Filter (id#0L &lt; 1)</span><br><span class="line">            +- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds5</span><br><span class="line">*Project [id#4L]</span><br><span class="line">+- *BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">   :- *Range (0, 2, step=1, splits=1)</span><br><span class="line">   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">      +- *Project [id#0L AS id#4L]</span><br><span class="line">         +- *Filter (id#0L &lt; 1)</span><br><span class="line">            +- *Range (0, 2, step=1, splits=1)</span><br></pre></td></tr></table></figure></p>
+<ol start="2">
+<li>使用 sql string，不会有任何问题；但是否应该在代码中使用大量的 sql 语句呢？一个可能的问题是维护困难，没有编译期检查，多行 sql 之间容易发生错误。<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spark.sql(<span class="string">" SELECT ds2.id FROM ds1 LEFT OUTER JOIN ds2 ON ds1.id = ds2.id "</span>)</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<hr>
+<p><a href="http://mail-archives.apache.org/mod_mbox/spark-user/201510.mbox/%3CCAFQ3t_zgNka1fOZQZNUqyO-6F9VqF7TLHOCqDFfMAzckX1hoFA@mail.gmail.com%3E" target="_blank" rel="noopener">另一个类似的问题</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/09/16/20180916-Dataset-col-colName-无法区分衍生表的列/" data-id="ck8v0f6vz001lcwwgghycz6iw" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/09/16/20180916-Dataset-col-colName-无法区分衍生表的列/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/10/08/20181007-ETL-使用脚本处理存在的问题/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          20181007 ETL 使用脚本处理存在的问题
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/09/08/20180908-Variance-in-Scala/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">20180908 Variance in Scala</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 10px;">Airflow</a> <a href="/tags/Java/" style="font-size: 15px;">Java</a> <a href="/tags/Python/" style="font-size: 10px;">Python</a> <a href="/tags/Scala/" style="font-size: 17.5px;">Scala</a> <a href="/tags/Shell/" style="font-size: 12.5px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">April 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/04/11/20200411-collectd-to-influxdb-data-format/">20200411 collectd to InfluxDB data format</a>
+          </li>
+        
+          <li>
+            <a href="/2020/02/29/20200229-性能优化总结/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-原理/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/30/20190130-Python-Cyclic-Import-Problem/">20190130 Python Cyclic Import Problem</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 Zhang Zhen<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2018/09/16/20180916-Dataset-col-colName-无法区分衍生表的列/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

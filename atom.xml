@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>PerfectDay20&#39;s Blog</title>
+  
+  
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="http://perfectday20.me/"/>
+  <updated>2020-04-11T02:30:28.843Z</updated>
+  <id>http://perfectday20.me/</id>
+  
+  <author>
+    <name>Zhang Zhen</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>20200411 collectd to InfluxDB data format</title>
+    <link href="http://perfectday20.me/2020/04/11/20200411-collectd-to-influxdb-data-format/"/>
+    <id>http://perfectday20.me/2020/04/11/20200411-collectd-to-influxdb-data-format/</id>
+    <published>2020-04-11T02:17:33.000Z</published>
+    <updated>2020-04-11T02:30:28.843Z</updated>
+    
+    <content type="html"><![CDATA[<p><img src="/images/20200411/collectd_influxdb.png" alt></p><p>InfluxDB 的数据格式是:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">measurement, tag_key:tag_value..., field_key:field_value..., timestamp</span><br></pre></td></tr></table></figure></p><p>collectd exec 的数据格式是:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PUTVAL Identifier [OptionList] Valuelist</span><br></pre></td></tr></table></figure></p><p>其中 Identifier 的格式是:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host/plugin-plugin_instance/type-type_instance</span><br></pre></td></tr></table></figure></p><p>InfluxDB 可以直接通过UDP读取 collectd network plugin 发送的数据, 并且将格式转换为自己的, 源码 <a href="https://github.com/influxdata/influxdb/blob/1.7/services/collectd/service.go" target="_blank" rel="noopener">https://github.com/influxdata/influxdb/blob/1.7/services/collectd/service.go</a> (默认是 split 转换)</p><p>转换过程中需要参照 collectd 的 types.db 的类型定义<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">host → tag: host=[host]</span><br><span class="line"></span><br><span class="line">plugin → measurement first part</span><br><span class="line"></span><br><span class="line">plugin_instance → tag: instance=[plugin_instance]</span><br><span class="line"></span><br><span class="line">type → tag: type=[type]</span><br><span class="line"></span><br><span class="line">type_instance → tag: type_instance=[type_instance]</span><br></pre></td></tr></table></figure></p><p>而measurement的第二部分就是由 types.db 中对应type的name来获得的</p><p>OptionList现在没有用到</p><p>比如一个 <code>PUTVAL [example.com/a-b/memory-d](http://example.com/a-b/memory-d) N:123</code><br>经过对比 types.db 中 memory类型: <code>memory value:GAUGE:0:281474976710656</code><br>就会转换为:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">measurement: a_value (下划线后面的&quot;value&quot;, 就对应的memory类型中值的name)</span><br><span class="line">tags: host=example.com, instance=b, type=memory, type_instance=d</span><br><span class="line">fields: value=123</span><br><span class="line">time: insert time (因为使用的是&quot;N&quot;)</span><br></pre></td></tr></table></figure></p><p>对于types.db 中有多个值的类型, 比如 <code>load shortterm:GAUGE:0:5000, midterm:GAUGE:0:5000, longterm:GAUGE:0:5000</code><br>比如一个 <code>PUTVAL [example.com/a-b/load-d](http://example.com/a-b/memory-d) N:1:U</code><br>就会转换为3个measurement, 名字的第二部分就对应type中的各个部分<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&gt; select * from a_shortterm</span><br><span class="line">name: a_shortterm</span><br><span class="line">timehostinstancetypetype_instancevalue</span><br><span class="line">--------------------------------------</span><br><span class="line">1584690315135039000example.combloadd1</span><br><span class="line"></span><br><span class="line">&gt; select * from a_midterm</span><br><span class="line">&gt; select * from a_longterm</span><br><span class="line">name: a_longterm</span><br><span class="line">timehostinstancetypetype_instancevalue</span><br><span class="line">--------------------------------------</span><br><span class="line">1584690315135039000example.combloadd0</span><br></pre></td></tr></table></figure></p><p>其中因为我们传递第一个值为1, 如实记录, 第二个是U, 就省略不写入(只有GAUGE类型是这样, 其他类型会报错), 第三个值没有写, 所以就是0</p><h1 id="Tips"><a href="#Tips" class="headerlink" title="Tips:"></a>Tips:</h1><p>使用 <code>collectdctl</code> 可以方便地进行 putval 测试, 使用时需要打开 collectd unixsock plugin</p><h1 id="参考"><a href="#参考" class="headerlink" title="参考:"></a>参考:</h1><p><a href="https://docs.influxdata.com/influxdb/v1.7/supported_protocols/collectd/" target="_blank" rel="noopener">https://docs.influxdata.com/influxdb/v1.7/supported_protocols/collectd/</a><br><a href="https://collectd.org/documentation/manpages/collectd-exec.5.shtml" target="_blank" rel="noopener">https://collectd.org/documentation/manpages/collectd-exec.5.shtml</a><br><a href="https://linux.die.net/man/1/rrdcreate" target="_blank" rel="noopener">https://linux.die.net/man/1/rrdcreate</a><br><a href="https://collectd.org/wiki/index.php/Plugin:Exec" target="_blank" rel="noopener">https://collectd.org/wiki/index.php/Plugin:Exec</a><br><a href="https://collectd.org/wiki/index.php/Plain_text_protocol" target="_blank" rel="noopener">https://collectd.org/wiki/index.php/Plain_text_protocol</a><br><a href="https://segmentfault.com/a/1190000012993990" target="_blank" rel="noopener">https://segmentfault.com/a/1190000012993990</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+  </entry>
+  
+  <entry>
+    <title>20200229 性能优化总结</title>
+    <link href="http://perfectday20.me/2020/02/29/20200229-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%80%BB%E7%BB%93/"/>
+    <id>http://perfectday20.me/2020/02/29/20200229-性能优化总结/</id>
+    <published>2020-02-29T09:10:36.000Z</published>
+    <updated>2020-02-29T09:40:04.741Z</updated>
+    
+    <content type="html"><![CDATA[<blockquote><p>Premature optimization is the root of all evil<br>– DonaldKnuth</p></blockquote><p>步骤:</p><ol start="0"><li><p>深入理解程序, 统观大局.<br>只有理清程序思路, 才能找到可能优化的点, 找到程序中别扭的地方, 同时不仅使性能更好, 也能使程序逻辑更加清晰.</p></li><li><p>准备环境脚本.<br>这一步是为了使后续测试工作更加方便, 包括编译, 打包, 上传部署, 运行等.<br>同时在测试程序性能时要关注 CPU, 网络磁盘IO等 (tmux 很方便).</p><p>每次部署测试操作越简单, 就越容易进行更多的测试, 获得更多的数据, 从而把精力放在优化中, 而不是各种繁琐的流程中.</p></li><li><p>确定优化目标<br>优化一定是有目标的, 不同的目标决定不同的优化方案.</p></li><li><p>分段测量性能与基准<br>比如一个程序主要路径上执行ABCD四个方法, 那就先注释掉BCD, 看A的性能; 然后只注释掉CD, 看AB比A差多少; 最终找到最大瓶颈位置, 进行重点优化.</p></li><li><p>分段优化, 最终组合</p></li><li><p>查漏补缺<br>用 FlameGraph 或者 GC log 各种工具分析, 调节 GC 参数等.</p></li><li><p>AB Test 保证正确性</p></li></ol><p>总之, 一切重点优化都要有数据支撑, 不能盲目.</p><p>bonus: 常用思路是 cache -&gt; batch -&gt; pipeline</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+  </entry>
+  
+  <entry>
+    <title>20190504 Spark ShuffleManager</title>
+    <link href="http://perfectday20.me/2019/05/04/20190504-Spark-ShuffleManager/"/>
+    <id>http://perfectday20.me/2019/05/04/20190504-Spark-ShuffleManager/</id>
+    <published>2019-05-04T08:14:40.000Z</published>
+    <updated>2019-05-04T08:15:05.018Z</updated>
+    
+    <content type="html"><![CDATA[<p>Spark 版本: 2.4.2</p><ul><li>ShuffleManager 负责注册 shuffle, 以及获取对应分区的 writer/reader</li><li>每一个 ShuffleDependency 在初始化时会注册 shuffle 并获得一个 ShuffleHandle</li><li>ShuffleManager 现在只有一个实现: SortShuffleManager</li><li>根据 ShuffleHandle 的不同, 获取不同的writer, 也就对应不同的 shuffle write 方式<h2 id="BypassMergeSortShuffleHandle-gt-BypassMergeSortShuffleWriter"><a href="#BypassMergeSortShuffleHandle-gt-BypassMergeSortShuffleWriter" class="headerlink" title="BypassMergeSortShuffleHandle -&gt; BypassMergeSortShuffleWriter"></a>BypassMergeSortShuffleHandle -&gt; BypassMergeSortShuffleWriter</h2>条件:<br>dep.mapSideCombine == false<br>&amp;&amp; dep.partitioner.numPartitions &lt;= SHUFFLE_SORT_BYPASS_MERGE_THRESHOLD(200)<br>方式:<br>根据下游分区, 每个分区的数据写入一个文件, 最后合并文件<br>不进行 map side combine, 所以必须设定为 false<br>同时打开文件流/serializer 不能太多, 所以设定了一个阈值<h2 id="SerializedShuffleHandle-gt-UnsafeShuffleWriter"><a href="#SerializedShuffleHandle-gt-UnsafeShuffleWriter" class="headerlink" title="SerializedShuffleHandle -&gt; UnsafeShuffleWriter"></a>SerializedShuffleHandle -&gt; UnsafeShuffleWriter</h2>条件:<br>dependency.serializer.supportsRelocationOfSerializedObjects<br>&amp;&amp; dependency.mapSideCombine == false<br>&amp;&amp; numPartitions &lt;= MAX_SHUFFLE_OUTPUT_PARTITIONS_FOR_SERIALIZED_MODE(16777216)<br>方式:<br>不使用 map side combine, mapper 获取到一条数据后立刻序列化<br>所有操作都是在序列化格式下, 比如排序/合并等, 所以需要序列化后的格式支持这些操作, 以避免重复序列化/反序列化<br>减少了内存占用/GC<h2 id="BaseShuffleHandle-gt-SortShuffleWriter"><a href="#BaseShuffleHandle-gt-SortShuffleWriter" class="headerlink" title="BaseShuffleHandle -&gt; SortShuffleWriter"></a>BaseShuffleHandle -&gt; SortShuffleWriter</h2>不满足以上条件时使用<br>使用了 ExternalSorter 先对数据根据 partition 分区, 然后溢写到磁盘时内部排序( if dep.mapSideCombine == true)<br>combine 时使用 PartitionedAppendOnlyMap, 否则使用 PartitionedPairBuffer</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Spark" scheme="http://perfectday20.me/tags/Spark/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20190503 Spark Broadcast 原理</title>
+    <link href="http://perfectday20.me/2019/05/03/20190503-Spark-Broadcast-%E5%8E%9F%E7%90%86/"/>
+    <id>http://perfectday20.me/2019/05/03/20190503-Spark-Broadcast-原理/</id>
+    <published>2019-05-03T10:17:28.000Z</published>
+    <updated>2019-05-03T10:18:24.708Z</updated>
+    
+    <content type="html"><![CDATA[<ul><li>SparkContext 调用 broadcast(), 使用 BroadcastManager 中的 TorrentBroadcastFactory 创建 TorrentBroadcast, 实际是工厂模式</li><li>BroadcastManager 的另一个作用是缓存, TorrentBroadcast 会根据 broadcastId 读取和写入</li><li>读取和写入都是根据 “spark.broadcast.blockSize” 分成小段处理</li><li>TorrentBroadcast 在初始化时会写入到本机, 也就是 driver 端, 所以要注意 driver 内存设定</li><li>TorrentBroadcast 的读取和写入都是依靠 BlockManager, 读取时会先看本地有没有, 如果没有则使用 BlockManager 远程拉取</li><li>远程拉取时从 driver 获得 locationsAndStatus, 然后地址 shuffle 后根据 same host &gt; same rack(topologyInfo) &gt; other 排序拉取, 这也是使用 “Torrent” 的意思</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Spark" scheme="http://perfectday20.me/tags/Spark/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20190130 Python Cyclic Import Problem</title>
+    <link href="http://perfectday20.me/2019/01/30/20190130-Python-Cyclic-Import-Problem/"/>
+    <id>http://perfectday20.me/2019/01/30/20190130-Python-Cyclic-Import-Problem/</id>
+    <published>2019-01-30T10:53:12.000Z</published>
+    <updated>2019-01-30T10:53:39.689Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="代码示例"><a href="#代码示例" class="headerlink" title="代码示例"></a>代码示例</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># p1.py</span></span><br><span class="line"><span class="keyword">import</span> p2</span><br><span class="line">v1 = <span class="number">1</span></span><br><span class="line">v2 = p2.v2</span><br><span class="line"></span><br><span class="line"><span class="comment">#p2.py</span></span><br><span class="line"><span class="keyword">import</span> p1</span><br><span class="line">v2 = <span class="number">2</span></span><br><span class="line">v1 = p1.v1</span><br></pre></td></tr></table></figure><p>假如运行 p1.py 会报错 <code>AttributeError: module &#39;p2&#39; has no attribute &#39;v2&#39;</code>,<br>运行 p2.py 会报错 <code>AttributeError: module &#39;p1&#39; has no attribute &#39;v1&#39;</code></p><h2 id="import-是如何执行的"><a href="#import-是如何执行的" class="headerlink" title="import 是如何执行的"></a>import 是如何执行的</h2><p>当遇到 import moduleA 时, </p><ol><li>首先检查 sys.modules 中有没有 <code>key=moduleA</code> 且值不为 None 的条目</li><li>如果有则直接使用该条目对应的 module object, 直接执行下一行</li><li>如果没有, 则创建 <code>key=moduleA</code> 条目, 值为空的 module object, 并执行 moduleA 中的代码, 如果执行中遇到 import 语句, 转到步骤 1 </li></ol><p>对于上面的示例代码中, 运行 p1.py 时流程如下:</p><ol><li>在 sys.modules 生成 <code>key=&#39;__main__&#39;</code> 条目</li><li>执行 p1.py 的 <code>import p2</code>, 这时 sys.modules 中没有 <code>key==&#39;p2&#39;</code>, 转到 p2.py </li><li>在 sys.modules 中生成 <code>key=&#39;p2&#39;</code> 条目, 并执行 p2.py 的 <code>import p1</code>, 这时 sys.modules 中没有 <code>key==&#39;p1&#39;</code>, 重新执行 p1.py</li><li>在 sys.modules 中生成 <code>key=&#39;p1&#39;</code> 条目, 并执行 p1.py 的 <code>import p2</code>, 这时 <code>key==&#39;p2&#39;</code> 已经存在, 不用转到 p2.py 执行了, 接着执行 <code>v1 = 1</code>, 无异常; 执行 <code>v2 = p2.v2</code>, 此时 p2 内容为空(因为代码还没有执行到其他行, <code>v2</code> 还没有加入到 p2 的命名空间中), 无法解析 <code>v2</code>, 报错</li></ol><p>究其原因是 import/class/def 等都是在 import 过程中直接执行的, 这时候遇到没有解析的对象找不到就会报错; 而方法体只有在调用的时候才会被执行</p><p>还有一种容易产生问题的写法, 就是循环引用又使用了 <code>from moduleA import B</code>, 且 B 是方法/类/变量时, 这就要求在执行到这一句的时候, moduleA 就已经解析了 B; 如下示例<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># p1.py</span></span><br><span class="line"><span class="keyword">from</span> p2 <span class="keyword">import</span> f2</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f1</span><span class="params">()</span>:</span></span><br><span class="line">    f2()</span><br><span class="line">    </span><br><span class="line"><span class="comment"># p2.py</span></span><br><span class="line"><span class="keyword">from</span> p1 <span class="keyword">import</span> f1</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f2</span><span class="params">()</span>:</span></span><br><span class="line">    f1()</span><br></pre></td></tr></table></figure></p><h2 id="如何解决"><a href="#如何解决" class="headerlink" title="如何解决"></a>如何解决</h2><p>一般这种现象的原因都是模块设计不合理, 最好是直接将公共依赖提取出来</p><p>临时解决方案包括在方法中 import, 或将 import 语句放在文件末尾</p><p>避免使用 import 直接引用类/方法/变量, <a href="https://github.com/google/styleguide/blob/gh-pages/pyguide.md#22-imports" target="_blank" rel="noopener">Google Python Style Guide</a> 提到:</p><blockquote><p>Use import statements for packages and modules only, not for individual classes or functions.</p></blockquote><h2 id="为什么-Java-Scala-中没有这种问题"><a href="#为什么-Java-Scala-中没有这种问题" class="headerlink" title="为什么 Java/Scala 中没有这种问题?"></a>为什么 Java/Scala 中没有这种问题?</h2><p>归根结底是加载方式不一样. </p><p>在 Java 中使用一个类需要经过 加载-&gt;验证-&gt;准备-&gt;解析-&gt;初始化, 如果 Java 文件没有问题, 且在方法区生成了相应类的描述, 此时该类所有的引用都还是符号引用, 只需在初始化之前解析为直接引用即可, 只有真正不存在这个符号引用的对象才会出错, 而不会像 Python 中执行到这一行一定要找到该对象, 即使确实存在也因为没有解析而报错.</p><p>另外 Java 中没有像 Python 中这样的全局变量/方法.</p><hr><h3 id="参考"><a href="#参考" class="headerlink" title="参考:"></a>参考:</h3><p><a href="https://docs.python.org/3/reference/import.html" target="_blank" rel="noopener">https://docs.python.org/3/reference/import.html</a><br><a href="http://effbot.org/zone/import-confusion.htm" target="_blank" rel="noopener">http://effbot.org/zone/import-confusion.htm</a><br><a href="https://realpython.com/absolute-vs-relative-python-imports/" target="_blank" rel="noopener">https://realpython.com/absolute-vs-relative-python-imports/</a><br><a href="https://stackoverflow.com/questions/744373/circular-or-cyclic-imports-in-python" target="_blank" rel="noopener">https://stackoverflow.com/questions/744373/circular-or-cyclic-imports-in-python</a><br><a href="https://www.zhihu.com/question/19887316" target="_blank" rel="noopener">https://www.zhihu.com/question/19887316</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Python" scheme="http://perfectday20.me/tags/Python/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20190107 Spark 任务优化方案</title>
+    <link href="http://perfectday20.me/2019/01/07/20180107-Spark-%E4%BB%BB%E5%8A%A1%E4%BC%98%E5%8C%96%E6%96%B9%E6%A1%88/"/>
+    <id>http://perfectday20.me/2019/01/07/20180107-Spark-任务优化方案/</id>
+    <published>2019-01-07T00:47:25.000Z</published>
+    <updated>2019-01-30T10:53:24.348Z</updated>
+    
+    <content type="html"><![CDATA[<p>对于一系列 Spark 任务的优化, 需要有目的的优化, 将精力花费在瓶颈处, 避免过早优化和盲目优化. </p><p>所以需要收集足够的运行信息, 比如设计一个 Dashboard, 对整个任务流程的信息进行收集, 包括输入信息/运行时间等. 另外假如这些任务是多人维护的, 有一个详细的文档说明也很重要. 从这些信息中提取公用资源/常用资源进行缓存和提前计算, 以减少实际运算时的重复计算.</p><h1 id="任务执行前"><a href="#任务执行前" class="headerlink" title="任务执行前"></a>任务执行前</h1><h2 id="任务输入聚合分析"><a href="#任务输入聚合分析" class="headerlink" title="任务输入聚合分析"></a>任务输入聚合分析</h2><p>目的: 分析目前各项任务中哪些条件常用, 给数据缓存提供思路</p><p>需求: 这些任务描述可能已经保存在数据库中, 最好有一个直观的可视化界面, 或者能有定期脚本分析结果, 分任务对条件进行归类聚合,<br>比如本周 A任务输入条件中: 条件1 a次, 条件2 b次, 条件3 c次</p><p>根据常用输入, 可以分析出各种常见模式, 提前计算结果, 或显示在界面上, 用于引导或推荐</p><h1 id="任务执行中"><a href="#任务执行中" class="headerlink" title="任务执行中"></a>任务执行中</h1><h2 id="多个任务共用数据"><a href="#多个任务共用数据" class="headerlink" title="多个任务共用数据"></a>多个任务共用数据</h2><p>目的: 可缓存不同任务共用的中间数据, 防止重复计算</p><p>难点: 各任务逻辑不同, 需熟悉所有执行流程</p><p>解决方案: </p><ol><li>一个人读所有计算逻辑代码</li><li>每个人维护各自计算逻辑文档(初始读取的数据, 中间生成了什么数据, 假如有什么数据会简化计算), 然后根据文档分析</li></ol><h2 id="单个任务常用数据"><a href="#单个任务常用数据" class="headerlink" title="单个任务常用数据"></a>单个任务常用数据</h2><p>从任务输入聚合分析的结果中找到常用数据<br>这些数据可以采用 Parquet 保存, 所以可以使用明文, 不需要转成 id</p><p>影响: 任务的数据加载部分需要修改<br>问题: 如何验证数据加载/提取/过滤这一块是瓶颈? (根据 Spark 运行记录)</p><h2 id="优化计算资源占用-内存-CPU"><a href="#优化计算资源占用-内存-CPU" class="headerlink" title="优化计算资源占用(内存/CPU)"></a>优化计算资源占用(内存/CPU)</h2><p>目的: 增大并行任务数</p><p>解决方案: 分析各任务 Spark 流程图, 看是否占用较多资源</p><h1 id="任务执行后"><a href="#任务执行后" class="headerlink" title="任务执行后"></a>任务执行后</h1><h2 id="任务时间统计"><a href="#任务时间统计" class="headerlink" title="任务时间统计"></a>任务时间统计</h2><p>目的: 寻找整个系统瓶颈</p><p>需求: 输出各任务执行时间, 最好有甘特图等</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Spark" scheme="http://perfectday20.me/tags/Spark/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20181209 Coursera: Mind Shift</title>
+    <link href="http://perfectday20.me/2018/12/09/20181209-Coursera-Mind-Shift/"/>
+    <id>http://perfectday20.me/2018/12/09/20181209-Coursera-Mind-Shift/</id>
+    <published>2018-12-09T00:54:50.000Z</published>
+    <updated>2018-12-09T00:57:00.135Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Week1"><a href="#Week1" class="headerlink" title="Week1"></a>Week1</h2><ul><li>Test, test, test yourself all the time on anything you really want to learn.</li><li>Follow your passion, 有时候只是意味着我们擅长这件事，所以才愿意去做，想去做。但事实是，有一些其他需要努力才能擅长的事，我们也能做到, 甚至是更加擅长, 只不过从来没有尝试过罢了</li></ul><hr><h2 id="Week2"><a href="#Week2" class="headerlink" title="Week2"></a>Week2</h2><ul><li>番茄学习法的休息时间是用来做一些和工作时间完全不同的事, 从而放松大脑</li><li>当感受到负面情绪时, 给其打上标签, 有助于从感性转到理性, 找到根本原因<ul><li>All or nothing thinking, 没做成这件事, 我什么都不是, 是个彻底的失败</li><li>Magnification, 夸大了事情的重要性</li><li>Overgeneralization, 一方面的失败不代表其他所有方面</li><li>Mental filter, 只关注了失败的方面</li><li>Discounting the positive, 不要忽略自己成功的其他方面</li><li>Jumping to conclusions, 不要盲目预测结果, 未来不知会如何</li><li>Mind reading, 不要以为别人是这么想我的</li><li>Emotional reasoning, 自己感觉坏事要发生, 事实却不是这样; 比如感觉要坠机, 黑夜里有鬼</li><li>Shouldy thinking, 认为自己应该更努力, 应该做得更好</li><li>Pejoratives, 认为自己笨</li><li>Personalization and blame, 有时根本不是我的错或责任</li></ul></li></ul><hr><h2 id="Week3"><a href="#Week3" class="headerlink" title="Week3"></a>Week3</h2><ul><li>要把 passion 和这个世界的需要的结合起来, 避免把 passion 用在无用的地方</li><li>除了主业, 要发展第二技能; 两者之间可能相辅相成, 也可以将 passion 用在第二技能上</li><li>同一工作的六个月和六年没有太大区别, 技能的学习是先快后慢的 log 型的 (这一点符合二八原则, 20%的时间就掌握了80%的技能, 如果不是为了精通, 则不必另费时间, 应该学习新的技能; 回想自己的工作, 有多少是在重复之前六个月就学会的东西呢?)</li></ul><hr><h2 id="Week4"><a href="#Week4" class="headerlink" title="Week4"></a>Week4</h2><ul><li>In fact, it’s often better to avoid asking someone to be your mentor, even if you consider them to be a mentor to you. </li><li>Look for ways to make yourself somehow useful to your mentor</li><li>If you want to be the smartest person in the room, it’s pretty simple. Just read more than everyone else.</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+  </entry>
+  
+  <entry>
+    <title>20181125 高效学习方法总结</title>
+    <link href="http://perfectday20.me/2018/11/25/20181125-%E9%AB%98%E6%95%88%E5%AD%A6%E4%B9%A0%E6%96%B9%E6%B3%95%E6%80%BB%E7%BB%93/"/>
+    <id>http://perfectday20.me/2018/11/25/20181125-高效学习方法总结/</id>
+    <published>2018-11-25T11:54:49.000Z</published>
+    <updated>2018-11-25T11:55:48.637Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="关键词"><a href="#关键词" class="headerlink" title="关键词"></a>关键词</h2><h3 id="主动"><a href="#主动" class="headerlink" title="主动"></a>主动</h3><p>主动学习, 充分调动主观能动性, 用自己内心的渴望来激发学习的动力; 或者通过 <code>练习 -&gt; 成功 -&gt; 获得自信 -&gt; 觉得有趣 -&gt; 更多练习</code> 这种正向循环来使自己产生兴趣, 从而变得主动</p><h3 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h3><p>制定合理的目标, 要足够详细, 可以细化到每一天, 甚至更细, 这样才不至于在闲下来的时候, 虽然知道有事情要做, 但是不知道具体该干什么, 或者拖延着不想做 (这一点和 GTD 中的制定下一步行动原则很像)</p><h3 id="专注-发散"><a href="#专注-发散" class="headerlink" title="专注/发散"></a>专注/发散</h3><p>大脑有两种模式, 专注和发散; 在专注的时候, 更像是在往大脑输入知识, 如果学习的时候不够专心, 则输入的速度就会很慢, 无法记住东西; 发散模式则是在放松的时候, 大脑会自动处理知识, 将各个不同领域的知识联系起来, 或者加深记忆, 或者产生新的想法</p><p>专注和发散都很重要; 这一点又和左脑右脑的分工很像, 在专注的时候, 就像左脑负责逻辑分析与计算, 发散则对应着右脑的大局观, 在专注的时候很容易走错路, 或者产生不合常理的结论, 这时需要右脑(发散)来通观大局.</p><h3 id="快速准确反馈"><a href="#快速准确反馈" class="headerlink" title="快速准确反馈"></a>快速准确反馈</h3><p>通过不断地快速的反馈, 来纠正大脑中错误的印象, 或者加深正确的记忆;</p><p>比如在做题时可以做一道题看一个答案, 迅速纠正错误(这种说法待验证)</p><h3 id="间隔"><a href="#间隔" class="headerlink" title="间隔"></a>间隔</h3><p>短时间多天的学习, 比长时间一天的学习效果好<br>这一点应该和重复记忆有关, 多次练习能够加深长期记忆, 比较像艾宾浩斯学习法; 而在学习的间隔中, 发散模式也许也参与了学习过程</p><h3 id="转化"><a href="#转化" class="headerlink" title="转化"></a>转化</h3><p>只有转化成自己的, 才是真正学会的; 比如用自己的话讲出来, 总结出来(30s 总结), 能够教给别人(费曼学习法)</p><h3 id="chunk"><a href="#chunk" class="headerlink" title="chunk"></a>chunk</h3><p>许多领域的知识都能结合成一个区块, 比如整个高效学习的方法就是一个 chunk, 区块内部紧密相联, 而通过区块之间互相产生联系, 则可以加深记忆, 促进理解, 发挥创造力</p><h3 id="比喻"><a href="#比喻" class="headerlink" title="比喻"></a>比喻</h3><p>通过比喻的方法, 将一个知识点化作另一个知识点, 比如电流和水流, 在 chunk 间建立联系, 加深理解; 有时候越荒诞的比喻越能加深记忆</p><h3 id="感官"><a href="#感官" class="headerlink" title="感官"></a>感官</h3><p>学习不只是只有看和做, 要充分利用各种感官, 将知识点想象成一幅图画, 或者加入想象中的听觉/触觉/嗅觉等, 在加上比喻等技巧</p><h3 id="过程-结果"><a href="#过程-结果" class="headerlink" title="过程/结果"></a>过程/结果</h3><p>如果要克服拖延症, 可以专注于过程, 而不是结果; 比如不是说要专注于完成这个任务, 而是专注于”做”这个过程, 那么就不会那么痛苦而一直拖延下去, 同时在做的过程中会发现不知不觉任务就完成了</p><h3 id="test-test-test"><a href="#test-test-test" class="headerlink" title="test/test/test"></a>test/test/test</h3><p>不断进行自我测试, 测试自己是否真正理解, 是否能总结要点, 是否能复述内容等等; 测试反过来能够促进自己更主动地学习(比如 30s 总结法)</p><hr><h2 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h2><h3 id="30s-总结法"><a href="#30s-总结法" class="headerlink" title="30s 总结法"></a>30s 总结法</h3><p>每次上完课/听完讲座/看完一篇有用的文章, 用 30s 立刻总结一下刚才知识中的要点</p><p>这个方法最容易掌握, 也是一种检测自己是否认真听讲的好方法, 同时也会督促自己主动, 专心<br>这里面运用到了: 主动, 转化, 测试</p><h3 id="富兰克林"><a href="#富兰克林" class="headerlink" title="富兰克林"></a>富兰克林</h3><p>将知识提炼成零散的关键字, 过一段时间看自己能否通过这些只言片语重现知识的全貌, 并与原来的内容进行比较</p><p>这里面运用到了: 总结, 间隔, 准确反馈</p><h3 id="费曼学习法"><a href="#费曼学习法" class="headerlink" title="费曼学习法"></a>费曼学习法</h3><p>假设自己要将这个知识教给一个完全不懂的人, 如何才能用自己的话将知识表述清楚?</p><p>这里面运用到了: 转化, 本身也是自我测试</p><h3 id="SQ3R"><a href="#SQ3R" class="headerlink" title="SQ3R"></a><a href="https://zh.wikipedia.org/wiki/SQ3R%E6%96%B9%E6%B3%95" target="_blank" rel="noopener">SQ3R</a></h3><p>综览 Survey -&gt; 发问 Question -&gt; 阅读 Read -&gt; 背诵 Recite -&gt; 复习 Review<br>读一本书不要从头到尾一字不落, 而是先要通观大局, 看每一部分的主要内容, 都表达了什么观点, 要带着问题/目标去读, 这样就更加主动, 而不是被动地接受</p><p>这里面运用到了: 主动</p><h3 id="番茄工作法"><a href="#番茄工作法" class="headerlink" title="番茄工作法"></a>番茄工作法</h3><p>每专心工作25分钟, 放松5分钟; 有效控制拖延症<br>也另有一种说法, 工作52分钟, 休息17分钟</p><h3 id="Eat-your-frog-first"><a href="#Eat-your-frog-first" class="headerlink" title="Eat your frog first"></a>Eat your frog first</h3><p>把最不愿意做的事/学习的东西放到早上来做, 因为早上最有精力<br>如果早上都不愿意做, 到了晚上身心俱疲地时候就更不会做了</p><hr><h2 id="资料"><a href="#资料" class="headerlink" title="资料"></a>资料</h2><p>书: <a href="https://book.douban.com/subject/25783654/" target="_blank" rel="noopener">如何高效学习</a><br>在线课程: <a href="https://www.coursera.org/learn/learning-how-to-learn" target="_blank" rel="noopener">Learning how to learn</a><br>博客: <a href="https://www.scotthyoung.com/blog/" target="_blank" rel="noopener">https://www.scotthyoung.com/blog/</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+  </entry>
+  
+  <entry>
+    <title>20181102 Airflow 中的时区问题</title>
+    <link href="http://perfectday20.me/2018/11/02/20181102-Airflow-%E4%B8%AD%E7%9A%84%E6%97%B6%E5%8C%BA%E9%97%AE%E9%A2%98/"/>
+    <id>http://perfectday20.me/2018/11/02/20181102-Airflow-中的时区问题/</id>
+    <published>2018-11-02T00:39:14.000Z</published>
+    <updated>2018-11-02T00:41:25.470Z</updated>
+    
+    <content type="html"><![CDATA[<p>TL;DR：在北京时间，想要在 0:00~8:00 每日触发任务且代码中需要使用执行日期，则需使用 <code>next_ds</code> 或 <code>tomorrow_ds</code> 来避免日期偏差问题。</p><hr><p>Airflow 支持时区设定，但内部处理时间的时候都是转换成 UTC 的，所以在按天进行调度的时候，可能会有显示时间不一致的问题。</p><p>比如我们希望每天早上 9:00 的时候运行昨天一天的任务，无论是按照文档中写的创建一个带时区的 start_date：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> pendulum</span><br><span class="line"></span><br><span class="line">local_tz = pendulum.timezone(<span class="string">"Asia/Shanghai"</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> DAG(dag_id=<span class="string">'test_timezone'</span>,</span><br><span class="line">         schedule_interval=<span class="string">'0 9 * * *'</span>,</span><br><span class="line">         start_date=datetime(<span class="number">2018</span>, <span class="number">10</span>, <span class="number">20</span>, tzinfo=local_tz),</span><br><span class="line">         catchup=<span class="keyword">True</span></span><br><span class="line">         ) <span class="keyword">as</span> dag:</span><br></pre></td></tr></table></figure></p><p>还是直接转换成 UTC 的时间，即 1:00，对应 +8 区的 9:00<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">with</span> DAG(dag_id=<span class="string">'test_timezone'</span>,</span><br><span class="line">         schedule_interval=<span class="string">'0 1 * * *'</span>,</span><br><span class="line">         start_date=datetime(<span class="number">2018</span>, <span class="number">10</span>, <span class="number">20</span>),</span><br><span class="line">         catchup=<span class="keyword">True</span></span><br><span class="line">         ) <span class="keyword">as</span> dag:</span><br></pre></td></tr></table></figure></p><p>这时任务执行中，使用 <code>ds</code> 都是没有问题的，比如处理 2018-10-31 的数据，<code>ds</code> 也会被渲染成 2018-10-31，因为在 2018-11-01 09:00:00+08:00 对应的 UTC 时间是 2018-11-01 01:00:00+00:00，此时两者的日期是一样的。</p><p>但假如我们想每天早上 7:00 执行任务，这时 2018-11-01 07:00:00+08:00 对应的 UTC 时间就是 2018-10-31 23:00:00+00:00，此时 <code>ds</code> 会被渲染成 2018-10-31，所以假如代码中依赖了执行日期，则需要使用 <code>next_ds</code> 或 <code>tomorrow_ds</code> 来避免日期偏差问题。</p><p>在内部，marcos 中的这些时间都是通过 <code>execution_date</code> 进行格式转换输出的，而 <code>execution_date</code> 是在 <code>TaskInstance.__init__()</code> 中被转换成 UTC 时间的，无论是设定了 start_date 的时区，还是直接修改了 Airflow 的默认时区。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Airflow" scheme="http://perfectday20.me/tags/Airflow/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20181014 Airflow tips</title>
+    <link href="http://perfectday20.me/2018/10/14/20181014-Airflow-tips/"/>
+    <id>http://perfectday20.me/2018/10/14/20181014-Airflow-tips/</id>
+    <published>2018-10-14T02:21:35.000Z</published>
+    <updated>2018-10-14T02:25:07.462Z</updated>
+    
+    <content type="html"><![CDATA[<ol><li>DAG 中的参数 catchup，若设为 False，则启动后不会追溯之前的任务，如果 start time 在现在之前且符合至少一次任务，则会启动最近的一次任务；比如设定的时间为 <code>&quot;50 0 * * *&quot;</code>，则是每天的 00:50 启动一次，<ul><li>假如现在是 2018-09-17 00:20:00，启动暂停的任务，会启动一个 Run id 为 scheduled__2018-09-15T00:50:00+00:00 的任务，因为在 2018-09-15 00:50:00 后过了一天，所以启动上一次的任务</li><li>假如现在是 2018-09-17 00:51:00，则启动后会执行上一次，即 Run id 为 scheduled__2018-09-16T00:50:00+00:00 的任务</li></ul></li><li>时间问题，可以设置默认时区，但是 templates 中返回的还是 UTC 时间，需要手动转换，所以还不如保持默认时区 UTC。当设置 start_time 的时区后，schedule_interval 的 cron 格式就是本地时区的时间了</li><li>pyenv 与 Airflow 结合的问题。Airflow 中的 BashOperator 是通过 subprocess 实现的，其中传入的环境变量就是当前的运行时，所以无法和 pyenv 搭配使用，比如进到某个路径下自动用相应的 local env。如果调用的 Python 版本各不相同，暂时的解决方案是直接使用绝对路径的 Python</li><li>if else 判断？BranchPythonOperator</li><li>如何传递 execution date？使用 templates，或 trigger 时设定 dag_run.conf</li><li>在 PythonOperator 中设 provide_context=True，则定义 callable 时加上 <code>**kwargs</code>，会自动填入 jinja templates 中的信息，如 ds 等，从而在代码中方便调用 <code>kwargs[&#39;ds&#39;]</code></li><li>更新 DAG 后是否重新命名？建议 id 增加 v1，v2</li><li>BashOperator 中如果直接指定的是可执行脚本文件，后面需要加一个空格, from <a href="https://cwiki.apache.org/confluence/display/AIRFLOW/Common+Pitfalls" target="_blank" rel="noopener">Common Pitfalls</a></li><li>登录账号密码？<a href="https://airflow.incubator.apache.org/security.html#password" target="_blank" rel="noopener">Web Authentication</a>，注意从一个数据库比如 MySQL 迁移到 PostgreSQL 而没有迁移数据时，需要重新设置账号密码</li><li>假如需要一个 dag 完成之后才进行下一时间的 dag，即同时只有一个 dag 在运行：<ul><li>可以试着看 wait_for_downstream 是否适用，</li><li>或者用 ExternalTaskSensor. from <a href="https://groups.google.com/forum/#!topic/airbnb_airflow/qh-2zXfTeqg" target="_blank" rel="noopener">this url</a>; </li><li>或者使用 xcom 保存 mutex 信息，和上一条原理相同，都是检测一个之前的 dag 正在运行的标志；from <a href="https://stackoverflow.com/questions/49231340/how-to-limit-airflow-to-run-only-1-dag-run-at-a-time" target="_blank" rel="noopener">this url</a></li><li>或者通过查询表 dag_run 中的相应条目</li><li>或者更加直接地使用 max_active_run = 1</li></ul></li><li>how to kill task? 运行中任务点击 clear 是杀死任务，当前任务失败，并且整个 DAG 失败，后续 trigger rule 为 one_failed 的任务也不会触发；失败任务 clear 会导致重试</li><li><p>当需要一个 DAG 触发另一个 DAG，而不是将这两个连成一个大的 DAG 时， </p><ul><li>可以使用 TriggerDagRunOperator；即使被触发的 DAG 的时间小于设定的 start_date，也会执行；但如果被暂停了，就不会执行，会累计在队列中，此时开启暂停，会执行所有积累的任务</li><li>传入 execution_date 时需要注意相同的 dag_id 的多个任务的 execution_date 不能相同，因为写入 table dag_run 时会报错，比如：sqlalchemy.exc.IntegrityError: (_mysql_exceptions.IntegrityError) (1062, “Duplicate entry ‘d9_subs-2018-09-28 07:44:00.000000’ for key ‘dag_id’”)；这是因为 table dag_run 设定了 UNIQUE KEY <code>dag_id</code> (<code>dag_id</code>,<code>execution_date</code>), 所以同一 dag_id 的 execution_date 不能相同</li><li>但不传入 execution_date 时，会导致被触发的 DAG 的实际执行时间是 timezone.utcnow()，而获取 execution_date 又很麻烦，比如需要继承并修改 template_fields 等。所以如果需要两个 DAG execution_date 相同，可以使用 PythonOperator，利用 provide_context 获取时间，然后直接调用 TriggerDagRunOperator 中使用的方法，如下：<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">trigger_external</span><span class="params">(**kwargs)</span>:</span></span><br><span class="line">    trigger_dag(dag_id=<span class="string">'external1'</span>,</span><br><span class="line">                run_id=<span class="string">'trig__'</span> + timezone.utcnow().isoformat(),</span><br><span class="line">                conf=<span class="string">'null'</span>,</span><br><span class="line">                execution_date=kwargs[<span class="string">'execution_date'</span>],</span><br><span class="line">                replace_microseconds=<span class="keyword">False</span>)</span><br><span class="line"></span><br><span class="line">trigger = PythonOperator(task_id=<span class="string">'trigger'</span>,</span><br><span class="line">                         python_callable=trigger_external,</span><br><span class="line">                         provide_context=<span class="keyword">True</span>)</span><br></pre></td></tr></table></figure></li></ul></li><li><p>可以在执行的 task 的 Web UI 中的 Rendered Template 中看到实际经过渲染的命令，可用于任务失败的排查，当然日志中也会打印执行的实际命令；也可以通过 CLI：airflow render dag_id task_id date，可用于执行前的命令验证</p></li><li>Operator 的返回值（如果不是 None）会放在 XCom 中，底层是在数据库的 xcom table 中，所以不同的 task 之间传递数据，即使下游任务失败，重启下游后还能获得相同的值，不必重新执行上游；下游获取时默认 dag_id = self.dag_id, key = ‘return_value’ 和 current execution_date</li></ol><hr><p>jinja2 使用的 context 由 TaskInstance.get_template_context() 获得<br>需要关注的一些 variables:</p><ul><li><code>dag</code> 对应 class DAG</li><li><code>dag_run</code> 对应 class DagRun</li><li><code>conf</code> 对应 class AirflowConfigParser，是解析后的 airflow.cfg，可用 as_dict() 查看全部内容；注意这个不是 DagRun 的 conf</li><li><code>params</code> = task.dag.params + task.params；每个 task 的 params 都是定义的 DAG + Operator 的 params，不能由上一个 task 设定 params 然后下一个 task 读取，即不能用 params 在 task 间传递值</li><li><code>ti</code> 对应 TaskInstance</li></ul><hr><p>给 BashOperator 中的 bash_command 传值：</p><ul><li>可以使用 env，注意复制原有环境，然后再使用比如 $FOO；如果是调用脚本文件，且文件没有使用 Airflow 的 marcos，则只能用这种方法传入环境变量</li><li>可以用 DAG user_defined_macros，利用 jinja templates；比 env 的方法好在 render 之后可以看到实际执行代码</li></ul><hr><p>以前用 bash 执行任务，因为是定时检测上游数据，希望一个日期的任务不要被多次触发，使用的方法是创建一个 mutex 文件标志当前日期文件正在运行中；在 Airflow 中，加入检测和执行是两个 DAG，也可以通过数据库，比如使用 xcom，在任务执行前检测是否已有任务正在执行并插入，执行完成后删除，但是这样假如任务失败就会使得 mutex 文件保留在数据库中，下一次执行的时候需要手动删除，这和在 bash 脚本执行的时候遇到的情况相同。<br>另一种方法就是利用 Airflow 中 dag_run 这张表，里面记录了 DAG 每次运行情况及状态，在触发 DAG 的时候可以设定其 run_id，将任务日期加在后面，然后每次检测 running 状态的 run_id 是否日期相同即可。这样就不用手动删除 mutex 记录。  </p><p>而要直接操作数据库，就涉及到 Hook 和 Connection 了。直接在 Airflow 的 Web UI Connection 中设定相应的账号密码，则在代码中可以直接使用对应的 Hook conn_id 获取相应的数据库数据。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Airflow" scheme="http://perfectday20.me/tags/Airflow/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20181007 ETL 使用脚本处理存在的问题</title>
+    <link href="http://perfectday20.me/2018/10/08/20181007-ETL-%E4%BD%BF%E7%94%A8%E8%84%9A%E6%9C%AC%E5%A4%84%E7%90%86%E5%AD%98%E5%9C%A8%E7%9A%84%E9%97%AE%E9%A2%98/"/>
+    <id>http://perfectday20.me/2018/10/08/20181007-ETL-使用脚本处理存在的问题/</id>
+    <published>2018-10-08T00:42:04.000Z</published>
+    <updated>2018-10-08T00:42:20.841Z</updated>
+    
+    <content type="html"><![CDATA[<p>之前遗留项目的 ETL 流程大量使用 bash 脚本，现在的项目则因为处理逻辑复杂，重新用 Python 编写。两者都是定时触发，长期维护发现存在以下问题：</p><ul><li>每个任务分散在各个不同的目录中，调试更改困难</li><li>有时多个任务可并行减少时间，但是只能使用 <code>&amp;</code> 和 <code>wait $PID</code> 来进行</li><li>任务失败无法快速找到断点，所以在接手之后根据整个流程写了一个检测脚本</li><li>找到断点后，想要执行后面所有的任务，则需要创建一个主流程副本，删掉前面的已成功任务的代码再执行</li><li>不知道任务执行到哪一步了，除非看 hadoop、spark history 和 hdfs 路径是否有文件生成或使用检测脚本</li><li>新人学习 ETL 流程时，只能阅读脚本然后手动画出整个过程，才能有直观上的理解；但流程图的每一步没有与代码直接对应</li><li>但如果采用手工绘制流程图，则更新代码后，流程图不能保证同步更新</li><li>一个大任务的日志一般在一个文件中，导致每个小任务日志混杂，难以排查</li><li>增加、暂停单个子任务需要直接更新主流程脚本</li><li>本地使用临时文件作为任务锁，防止任务重复执行</li><li>bash 脚本时使用本地文件记录已执行日期，其实是当作简单的数据库；Python 中则使用 sqlite 进行简单记录</li><li>统计任务时间困难，要不根据日志，要不在代码中加上统计时间代码</li></ul><p>最近受到 Azkaban 等任务调度系统启发，经调研决定使用 Airflow 来进行任务调度，尝试解决上面各种问题。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+  </entry>
+  
+  <entry>
+    <title>20180916 Dataset.col(colName) 无法区分衍生表的列</title>
+    <link href="http://perfectday20.me/2018/09/16/20180916-Dataset-col-colName-%E6%97%A0%E6%B3%95%E5%8C%BA%E5%88%86%E8%A1%8D%E7%94%9F%E8%A1%A8%E7%9A%84%E5%88%97/"/>
+    <id>http://perfectday20.me/2018/09/16/20180916-Dataset-col-colName-无法区分衍生表的列/</id>
+    <published>2018-09-16T11:34:36.000Z</published>
+    <updated>2018-09-16T11:34:49.904Z</updated>
+    
+    <content type="html"><![CDATA[<h3 id="问题："><a href="#问题：" class="headerlink" title="问题："></a>问题：</h3><p>若数据集1产生数据集2，则两者进行 join 然后使用 ds.col(colName) select 的时候结果中的列可能并非想选择的，例如想选择 left outer join 后右表的同名列：</p><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">ScalaTest</span> </span>&#123;</span><br><span class="line">  <span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Item</span>(<span class="params">cuid: <span class="type">String</span>, query: <span class="type">String</span></span>)</span></span><br><span class="line"><span class="class">  <span class="title">def</span> <span class="title">main</span>(<span class="params">args: <span class="type">Array</span>[<span class="type">String</span>]</span>)</span>: <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> spark = <span class="type">SparkSession</span>.builder().master(<span class="string">"local"</span>).getOrCreate()</span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line">    <span class="keyword">val</span> ds1 = spark.range(<span class="number">2</span>)</span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//| id|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//|  0|</span></span><br><span class="line">    <span class="comment">//|  1|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="keyword">val</span> ds2 = ds1.filter(<span class="symbol">'id</span> &lt; <span class="number">1</span>)</span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//| id|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//|  0|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="keyword">val</span> ds3 =  ds1.join(ds2, ds1.col(<span class="string">"id"</span>) === ds2.col(<span class="string">"id"</span>), <span class="string">"left_outer"</span>)</span><br><span class="line">    <span class="comment">//+---+----+</span></span><br><span class="line">    <span class="comment">//| id|  id|</span></span><br><span class="line">    <span class="comment">//+---+----+</span></span><br><span class="line">    <span class="comment">//|  0|   0|</span></span><br><span class="line">    <span class="comment">//|  1|null|</span></span><br><span class="line">    <span class="comment">//+---+----+</span></span><br><span class="line">    <span class="keyword">val</span> ds4 = ds3.select(ds1.col(<span class="string">"id"</span>)) <span class="comment">// 选取第一列</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//| id|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//|  0|</span></span><br><span class="line">    <span class="comment">//|  1|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="keyword">val</span> ds5 = ds3.select(ds2.col(<span class="string">"id"</span>)) <span class="comment">// 原意是选取第二列，但结果还是第一列</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//| id|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">    <span class="comment">//|  0|</span></span><br><span class="line">    <span class="comment">//|  1|</span></span><br><span class="line">    <span class="comment">//+---+</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>ds2 由 ds1 衍生，其中 <code>ds1.col(&quot;id&quot;) === ds2.col(&quot;id&quot;)</code> 这一句会产生警告<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">WARN Column: Constructing trivially true equals predicate, &apos;id#0L = id#0L&apos;. Perhaps you need to use aliases.</span><br></pre></td></tr></table></figure></p><p>实际上这两个 column 的对象是同一个，在 Column 的 <code>===</code> 方法中会输出这一句警告。假如直接按照语义处理则会变成笛卡尔积的形式，这也是早期版本的处理方式，如 <a href="https://stackoverflow.com/questions/32190828/spark-sql-performing-carthesian-join-instead-of-inner-join/32191266" target="_blank" rel="noopener">这个问题</a> 中的情况，而后来 Dataset.join 中会特殊处理成 self equal join on key。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">def join(right: Dataset[_], joinExprs: Column, joinType: String): DataFrame = &#123;</span><br><span class="line">  // Note that in this function, we introduce a hack in the case of self-join to automatically</span><br><span class="line">  // resolve ambiguous join conditions into ones that might make sense [SPARK-6231].</span><br><span class="line">  // Consider this case: df.join(df, df(&quot;key&quot;) === df(&quot;key&quot;))</span><br><span class="line">  // Since df(&quot;key&quot;) === df(&quot;key&quot;) is a trivially true condition, this actually becomes a</span><br><span class="line">  // cartesian join. However, most likely users expect to perform a self join using &quot;key&quot;.</span><br><span class="line">  // With that assumption, this hack turns the trivially true condition into equality on join</span><br><span class="line">  // keys that are resolved to both sides.</span><br></pre></td></tr></table></figure></p><p>所以上面的 ds3 是符合我们预期的，但 ds5 选择的也是 ds3 的第一列，因为 <code>ds1.col(&quot;id&quot;)</code> 与 <code>ds2.col(&quot;id&quot;)</code> 是同一个对象，所以 ds5 结果与 ds4 相同；利用 explain 可看出这一点：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">== Physical Plan == // ds1</span><br><span class="line">*Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds2</span><br><span class="line">*Filter (id#0L &lt; 1)</span><br><span class="line">+- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds3</span><br><span class="line">*BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">:- *Range (0, 2, step=1, splits=1)</span><br><span class="line">+- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">   +- *Filter (id#4L &lt; 1)</span><br><span class="line">      +- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds4</span><br><span class="line">*Project [id#0L]</span><br><span class="line">+- *BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">   :- *Range (0, 2, step=1, splits=1)</span><br><span class="line">   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">      +- *Filter (id#4L &lt; 1)</span><br><span class="line">         +- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds5</span><br><span class="line">*Project [id#0L]</span><br><span class="line">+- *BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">   :- *Range (0, 2, step=1, splits=1)</span><br><span class="line">   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">      +- *Filter (id#4L &lt; 1)</span><br><span class="line">         +- *Range (0, 2, step=1, splits=1)</span><br></pre></td></tr></table></figure></p><hr><h3 id="解决办法："><a href="#解决办法：" class="headerlink" title="解决办法："></a>解决办法：</h3><ol><li>利用 withColumnRenamed 或 as 重命名，新列名可以与原来相同，只是借助重命名这个动作使其产生一个新的引用对象<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> ds2 = ds1.filter(<span class="symbol">'id</span> &lt; <span class="number">1</span>).withColumn(<span class="string">"id"</span>,<span class="symbol">'id</span>)</span><br></pre></td></tr></table></figure></li></ol><p>此时执行计划就发生了改变，可以看出这一次 ds4 输出的是列 [id#0L]，而 ds5 是 [id#4L]，正好分别是 ds3 中的两列。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">== Physical Plan == // ds1</span><br><span class="line">*Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds2</span><br><span class="line">*Filter (id#0L &lt; 1)</span><br><span class="line">+- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds3</span><br><span class="line">*BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">:- *Range (0, 2, step=1, splits=1)</span><br><span class="line">+- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">   +- *Project [id#0L AS id#4L]</span><br><span class="line">      +- *Filter (id#0L &lt; 1)</span><br><span class="line">         +- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds4</span><br><span class="line">*Project [id#0L]</span><br><span class="line">+- *BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">   :- *Range (0, 2, step=1, splits=1)</span><br><span class="line">   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">      +- *Project [id#0L AS id#4L]</span><br><span class="line">         +- *Filter (id#0L &lt; 1)</span><br><span class="line">            +- *Range (0, 2, step=1, splits=1)</span><br><span class="line">== Physical Plan == // ds5</span><br><span class="line">*Project [id#4L]</span><br><span class="line">+- *BroadcastHashJoin [id#0L], [id#4L], LeftOuter, BuildRight</span><br><span class="line">   :- *Range (0, 2, step=1, splits=1)</span><br><span class="line">   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]))</span><br><span class="line">      +- *Project [id#0L AS id#4L]</span><br><span class="line">         +- *Filter (id#0L &lt; 1)</span><br><span class="line">            +- *Range (0, 2, step=1, splits=1)</span><br></pre></td></tr></table></figure></p><ol start="2"><li>使用 sql string，不会有任何问题；但是否应该在代码中使用大量的 sql 语句呢？一个可能的问题是维护困难，没有编译期检查，多行 sql 之间容易发生错误。<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spark.sql(<span class="string">" SELECT ds2.id FROM ds1 LEFT OUTER JOIN ds2 ON ds1.id = ds2.id "</span>)</span><br></pre></td></tr></table></figure></li></ol><hr><p><a href="http://mail-archives.apache.org/mod_mbox/spark-user/201510.mbox/%3CCAFQ3t_zgNka1fOZQZNUqyO-6F9VqF7TLHOCqDFfMAzckX1hoFA@mail.gmail.com%3E" target="_blank" rel="noopener">另一个类似的问题</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Spark" scheme="http://perfectday20.me/tags/Spark/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20180908 Variance in Scala</title>
+    <link href="http://perfectday20.me/2018/09/08/20180908-Variance-in-Scala/"/>
+    <id>http://perfectday20.me/2018/09/08/20180908-Variance-in-Scala/</id>
+    <published>2018-09-08T13:13:09.000Z</published>
+    <updated>2018-09-08T13:13:25.468Z</updated>
+    
+    <content type="html"><![CDATA[<table><thead><tr><th>T’ extends T</th><th>Meaning</th><th>Scala notation</th></tr></thead><tbody><tr><td>covariant</td><td>C[T’] is a subclass of C[T]</td><td>[+T]</td></tr><tr><td>contravariant</td><td>C[T] is a subclass of C[T’]</td><td>[-T]</td></tr><tr><td>invariant</td><td>C[T] and C[T’] are not related</td><td>[T]</td></tr></tbody></table><p>from <a href="https://twitter.github.io/scala_school/type-basics.html" target="_blank" rel="noopener">Type &amp; polymorphism basics</a></p><p>比如 Function1[-T1, +R] 可以这样理解：<br>一个类型为 Function1 的变量，可以指向任何一个方法，只要该方法接受 T1 作为输入，接受 R 作为输出。而此时该方法的实际输入类型可以是 T1 的父类，输出类型可以是 R 的子类，也符合情况。<br>相当于是宽进严出。</p><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">Solution</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> f1: <span class="type">A2</span> =&gt; <span class="type">A2</span> = a =&gt; a</span><br><span class="line">    test(f1)</span><br><span class="line">    <span class="keyword">val</span> f2: <span class="type">A2</span> =&gt; <span class="type">A3</span> = a =&gt; <span class="keyword">new</span> <span class="type">A3</span></span><br><span class="line">    test(f2)</span><br><span class="line">    <span class="keyword">val</span> f3: <span class="type">A1</span> =&gt; <span class="type">A3</span> = a =&gt; <span class="keyword">new</span> <span class="type">A3</span></span><br><span class="line">    test(f3)</span><br><span class="line">    <span class="keyword">val</span> f4: <span class="type">A3</span> =&gt; <span class="type">A1</span> = a =&gt; a</span><br><span class="line">    test(f4) <span class="comment">// can't compile </span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">test</span></span>(f: <span class="type">A2</span> =&gt; <span class="type">A2</span>) = println(f)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A1</span></span></span><br><span class="line"><span class="class"><span class="title">class</span> <span class="title">A2</span> <span class="keyword">extends</span> <span class="title">A1</span></span></span><br><span class="line"><span class="class"><span class="title">class</span> <span class="title">A3</span> <span class="keyword">extends</span> <span class="title">A2</span></span></span><br></pre></td></tr></table></figure><blockquote><p>It makes sense to use contravariance for the values an object consumes, and covariance for the values it produces.<br>Parameters are contravariant positions, and return types are covariant. Inside a function parameter, the variance flips.<br>from Scala for the Impatients</p></blockquote><ul><li><p>这就对应了上面 Function1 的定义，T1 是消耗的，所以是 contravariance；R 是产出的，所以是 covariance。</p></li><li><p>Scala 编译器对 variance 的控制比较严，对应的 variance 类型只能放在对应的位置，否则无法通过编译，比如：<code>case class Pair[+T](var first: T, var second: T)</code>，由于会生成 setter 方法，而在 setter 方法中 first 和 second 都是在 contravariance 位置，与定义相反，则假如能通过编译，下面的代码就会有类似 Java 数组运行时 ArrayStoreException 的问题：</p><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> p: <span class="type">Pair</span>[<span class="type">Any</span>] = <span class="type">Pair</span>(<span class="number">1</span>, <span class="number">2</span>)</span><br><span class="line">p.first = <span class="string">"hello"</span></span><br></pre></td></tr></table></figure></li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Scala" scheme="http://perfectday20.me/tags/Scala/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20180906 Spark Serialization Problem Revisited</title>
+    <link href="http://perfectday20.me/2018/09/06/20180906-Spark-Serialization-Problem-Revisited/"/>
+    <id>http://perfectday20.me/2018/09/06/20180906-Spark-Serialization-Problem-Revisited/</id>
+    <published>2018-09-06T00:20:30.000Z</published>
+    <updated>2018-09-06T00:20:46.306Z</updated>
+    
+    <content type="html"><![CDATA[<p>嵌套内部类可能会引起序列化问题<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SparkLocalTest</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">localTest</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        SparkSession spark = SparkSession.builder().master(<span class="string">"local"</span>).getOrCreate();</span><br><span class="line">        Dataset&lt;Row&gt; ds = spark.range(<span class="number">1000</span>).toDF();</span><br><span class="line">        ds.transform(flat2()).show(); <span class="comment">// 正常</span></span><br><span class="line">        ds.transform(flat1()).show(); <span class="comment">// 报错</span></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Function1&lt;Dataset&lt;Row&gt;, Dataset&lt;Row&gt;&gt; flat1() &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> AbstractFunction1&lt;Dataset&lt;Row&gt;, Dataset&lt;Row&gt;&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Dataset&lt;Row&gt; <span class="title">apply</span><span class="params">(Dataset&lt;Row&gt; v1)</span> </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> v1.flatMap(<span class="keyword">new</span> FlatMapFunction&lt;Row, String&gt;() &#123;</span><br><span class="line">                    <span class="meta">@Override</span></span><br><span class="line">                    <span class="function"><span class="keyword">public</span> Iterator&lt;String&gt; <span class="title">call</span><span class="params">(Row row)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                        <span class="keyword">return</span> Stream.of(<span class="string">""</span> + row.getLong(<span class="number">0</span>)).iterator();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;, Encoders.STRING()).toDF();</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="comment">// 与上面的方法区别仅在于使用了 lambda 简化代码</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Function1&lt;Dataset&lt;Row&gt;, Dataset&lt;Row&gt;&gt; flat2() &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> AbstractFunction1&lt;Dataset&lt;Row&gt;, Dataset&lt;Row&gt;&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Dataset&lt;Row&gt; <span class="title">apply</span><span class="params">(Dataset&lt;Row&gt; v1)</span> </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> v1.flatMap((FlatMapFunction&lt;Row, String&gt;) row -&gt; Stream.of(<span class="string">""</span> + row.getLong(<span class="number">0</span>)).iterator(),</span><br><span class="line">                                  Encoders.STRING()).toDF();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p><p>虽然两个方法都是静态的，但是编译后会产生多个 class 文件：<br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SparkLocalTest$1.class</span><br><span class="line">SparkLocalTest$1$1.class</span><br><span class="line">SparkLocalTest$2.class</span><br><span class="line">SparkLocalTest.class</span><br></pre></td></tr></table></figure></p><ul><li>transform 方法定义 <code>def transform[U](t: Dataset[T] =&gt; Dataset[U]): Dataset[U] = t(this)</code>，所以是用 flat 方法在 driver 端产生了一个 Function 对象并仅在 driver 端使用，所以该 Function 对象可以不实现序列化</li><li>flat1 由于嵌套，产生了两个文件，而且内部类 <code>SparkLocalTest$1$1</code> 还引用了外部类 <code>SparkLocalTest$1.class</code>，由于外部类是 AbstractFunction1 的子类，并没有实现序列化接口，由于要发送到 executor 进行操作，所以使用时会报错 <code>Task not serializable: java.io.NotSerializableException: SparkLocalTest$1</code></li><li>而 flat2 中的 lambda 编译后是静态域，<code>private static java.lang.Object $deserializeLambda$(java.lang.invoke.SerializedLambda);</code> 就没有序列化问题</li><li>另一种方案是创建一个实现序列化的类：<code>abstract static class SerializableFunction1&lt;T1, R&gt; extends AbstractFunction1&lt;T1, R&gt; implements Serializable</code></li></ul><hr><p> 从 <a href="https://www.yihangho.com/java-nested-classes-behind-the-scenes/" target="_blank" rel="noopener">Java Nested Classes: Behind the Scenes</a> 学到的：</p><ul><li>内部类其实就是一种语法糖，对于 JVM 来说是透明的，JVM 看到的就是普通的类</li><li>编译器在编译时将内部类提取出来，因为要访问包围类的域，所以内部类要保存包围类的引用</li><li>当包围类的域是 private 的，包围类会产生一个静态访问方法供内部类使用；否则会直接通过引用访问</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Spark" scheme="http://perfectday20.me/tags/Spark/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20180905 利用窗口函数给 group 数据打标签</title>
+    <link href="http://perfectday20.me/2018/09/05/20180905-%E5%88%A9%E7%94%A8%E7%AA%97%E5%8F%A3%E5%87%BD%E6%95%B0%E7%BB%99-group-%E6%95%B0%E6%8D%AE%E6%89%93%E6%A0%87%E7%AD%BE/"/>
+    <id>http://perfectday20.me/2018/09/05/20180905-利用窗口函数给-group-数据打标签/</id>
+    <published>2018-09-05T00:44:39.000Z</published>
+    <updated>2018-09-05T00:45:32.286Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="问题："><a href="#问题：" class="headerlink" title="问题："></a>问题：</h2><p>Spark 中一张表有两列，id 和 query，要根据 query 的 pv 来给每一行增加新的一列 quality（if pv&gt;=2 quality = high, else quality = low）</p><h3 id="原有解决办法："><a href="#原有解决办法：" class="headerlink" title="原有解决办法："></a>原有解决办法：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">+--------------+           +---------------+</span><br><span class="line">|              |           |               |</span><br><span class="line">|  id, query   +---------&gt; |  query, pv    |</span><br><span class="line">|              |           |               |</span><br><span class="line">+--------------+           +---------------+</span><br><span class="line">      |                            |</span><br><span class="line">      |                            |</span><br><span class="line">      |                    +-------v-------+</span><br><span class="line">      |                    |               |</span><br><span class="line">      |                    | query,quality |</span><br><span class="line">      |                    |               |</span><br><span class="line">      |                    +---------------+</span><br><span class="line">      |                            |</span><br><span class="line">      +----------------------------+</span><br><span class="line">                      |</span><br><span class="line">       +--------------v-------------+</span><br><span class="line">       |                            |</span><br><span class="line">       |      id, query, quality    |</span><br><span class="line">       |                            |</span><br><span class="line">       +----------------------------+</span><br></pre></td></tr></table></figure><p>如图，先创建一个新的 Dataset（query，quality），然后跟原有的表进行 join on query。这样需要要注意的是假如某一个 query pv 特别大，join 的时候会全部分布到一个节点上，轻则数据倾斜，重则 OOM 等。这时的解决办法是根据 pv 将 query 分为两张表，一张记录 pv 较少的，比如 pv&lt;500000，正常采用 SortMergeJoin 即可；另一张表记录 pv 较大的，比如 pv&gt;500000，由于 pv 较大的 query 很少，所以采用 BroadcastHashJoin，这样就不会将所有相同 query 记录拉取到同一节点。</p><h3 id="采用窗口函数的方法："><a href="#采用窗口函数的方法：" class="headerlink" title="采用窗口函数的方法："></a>采用窗口函数的方法：</h3><ul><li>在 SQL 中一般的函数是根据每一行，输出一个值；</li><li>聚合函数是根据每一个 group，输出一个值；</li><li>而窗口函数是根据每一个 group，给每一行分别输出一个值。<br>在以上的问题中，实际是给每行增加一列 pv，然后再转换为 quality，这个 pv 列的获得，原有方法中是通过 join，而其实可以通过窗口函数：<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">ScalaTest</span> </span>&#123;</span><br><span class="line">  <span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Item</span>(<span class="params">cuid: <span class="type">String</span>, query: <span class="type">String</span></span>)</span></span><br><span class="line"><span class="class">  <span class="title">def</span> <span class="title">main</span>(<span class="params">args: <span class="type">Array</span>[<span class="type">String</span>]</span>)</span>: <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> spark = <span class="type">SparkSession</span>.builder().master(<span class="string">"local"</span>).getOrCreate()</span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line">    <span class="keyword">val</span> ds = <span class="type">Seq</span>(</span><br><span class="line">      <span class="type">Item</span>(<span class="string">"c1"</span>, <span class="string">"hello"</span>),</span><br><span class="line">      <span class="type">Item</span>(<span class="string">"c1"</span>, <span class="string">"hello"</span>),</span><br><span class="line">      <span class="type">Item</span>(<span class="string">"c2"</span>, <span class="string">"world"</span>),</span><br><span class="line">      <span class="type">Item</span>(<span class="string">"c3"</span>, <span class="string">"foo"</span>)</span><br><span class="line">    ).toDF()</span><br><span class="line">    ds.show()</span><br><span class="line">    <span class="keyword">val</span> window = <span class="type">Window</span>.partitionBy(<span class="string">"query"</span>)</span><br><span class="line">    <span class="keyword">val</span> result = ds.withColumn(<span class="string">"pv"</span>, count(<span class="symbol">'query</span>).over(window))</span><br><span class="line">      .withColumn(<span class="string">"quality"</span>, when(<span class="symbol">'pv</span> &gt;= <span class="number">2</span>, <span class="string">"high"</span>).otherwise(<span class="string">"low"</span>))</span><br><span class="line">    result.show()</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li></ul><p>至于使用窗口函数是否会引起数据倾斜，由于实际场景中还有其他限制（比如需要根据一张表的 pv 来给另一张表打标签，所以还是暂时使用的第一种方法），还未验证。</p><hr><p>另外窗口函数还有其它很多用处，比如根据每个 id 取出相应数量的记录，但是每个 id 的取出数量都不同，又有大量 id，如果根据每一个 id 进行 filter 再 union，实际上是串行操作，会耗费大量时间；另一种方法是将原表变成 （id，[query …]）与 (id, count）进行 join，再取出相应 count 个数，这样利用了并行处理更快一些。更好的方法是用窗口函数，给原表每行数据加上 rowNumber，join （id，count）后直接选取 rowNumber &lt; count 的条目即可。</p><hr><h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><p><a href="https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html" target="_blank" rel="noopener">Introducing Window Functions in Spark SQL</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Spark" scheme="http://perfectday20.me/tags/Spark/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20180827 Lambda &amp; Effective Final</title>
+    <link href="http://perfectday20.me/2018/08/28/20180827-Lambda-Effective-Final/"/>
+    <id>http://perfectday20.me/2018/08/28/20180827-Lambda-Effective-Final/</id>
+    <published>2018-08-28T01:00:00.000Z</published>
+    <updated>2018-08-28T01:01:55.714Z</updated>
+    
+    <content type="html"><![CDATA[<blockquote><p>Inner classes can refer to mutable instance fields<br>if the inner-class expression occurs in an instance context,<br>but this is not the same thing.<br>A good way to think of this is that a reference inside an inner class to the field x<br>from the enclosing class is really shorthand for Outer.this.x,<br>where Outer.this is an implicitly declared final local variable.</p></blockquote><p><a href="https://www.ibm.com/developerworks/java/library/j-ldn2/j-ldn2-pdf.pdf" target="_blank" rel="noopener">Language designer’s notebook: First, do no harm</a></p><ol><li>局部变量的的寿命和包围的 block 是相同的，但 lambda 可以被保存在变量中，进而可以在 block 之外运行。当被 lambda 捕获时，则扩大了局部变量的寿命，与局部变量原有的表现不同</li><li>局部变量不会有竞争出现，因为只用一个线程可以访问，如果允许捕获可变局部变量，将打破这一局面</li><li>lambda 可以捕获 field，没有打破之前的规则</li><li>只能捕获 effective final 的一个好的副作用是，引导写出更加函数式的代码</li></ol>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Java" scheme="http://perfectday20.me/tags/Java/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20180821 Spark &amp; Scala Lambda Serialization</title>
+    <link href="http://perfectday20.me/2018/08/22/20180821-Spark-Scala-Lambda-Serialization/"/>
+    <id>http://perfectday20.me/2018/08/22/20180821-Spark-Scala-Lambda-Serialization/</id>
+    <published>2018-08-22T00:33:37.000Z</published>
+    <updated>2018-08-22T11:13:23.542Z</updated>
+    
+    <content type="html"><![CDATA[<p> <a href="https://www.lyh.me/lambda-serialization.html" target="_blank" rel="noopener">Lambda serialization</a><br>这篇文章的思路是通过加上 @transient 来使得不用的 field 避免序列化，副作用就是假如用到了，就会出现 NPE，解决办法就是再加上 lazy</p><hr><p><a href="http://erikerlandson.github.io/blog/2015/03/31/hygienic-closures-for-scala-function-serialization/" target="_blank" rel="noopener">Hygienic Closures for Scala Function Serialization</a><br>其实思路和 <a href="http://spark.apache.org/docs/latest/rdd-programming-guide.html#passing-functions-to-spark" target="_blank" rel="noopener">Spark RDD Programming Guide</a> 中的一样，都是先将需要对象中的 field 复制到 local variable 中，这样就避免了序列化整个对象<br>不过该文中实现了一个更通用的方法来包装整个过程，更方便使用</p><hr><p>在 Spark 传递 functions 时，</p><ul><li>Scala 建议使用 <a href="https://docs.scala-lang.org/tour/basics.html#functions" target="_blank" rel="noopener">Anonymous function syntax</a> 和 Object 中的 static method；当传递类实例中的方法时，就需要注意序列化问题；可以用 anonymous function 是因为其被编译后的代码实现了序列化接口</li><li>Java 建议时使用对应的 lambda 用来实现 Spark 提供的各种继承序列化接口的 Function 接口；或者写出继承类；<strong>这里需要注意，如果使用匿名类或内部类，由于其拥有外部对象的引用，所以外部类必须实现序列化，或者用 static 内部类；但 non-capturing lambda 是被编译成外部类的 static field，所以可以直接使用，外部类也不用序列化（在 Scala 2.12, 2.13 中所有的 lambda 都被编译成 static 方法）</strong><blockquote><p>Compiler by default inserts constructor in the byte code of the<br>Anonymous class with reference to Outer class object .<br>The outer class object is used to access the instance variable<br>The outer class is serialized and sent along with the serialized object of the inner anonymous class</p></blockquote></li></ul><p><a href="https://stackoverflow.com/questions/40818001/understanding-spark-serialization" target="_blank" rel="noopener">understanding-spark-serialization</a></p><blockquote><p>Non-capturing lambdas are simply desugared into a static method having exactly the same signature of the lambda expression and declared inside the same class where the lambda expression is used. </p></blockquote><p><a href="https://www.infoq.com/articles/Java-8-Lambdas-A-Peek-Under-the-Hood" target="_blank" rel="noopener">Java 8 Lambdas - A Peek Under the Hood</a></p><blockquote><p>Note that lambda body methods are <a href="https://github.com/scala/scala/commit/0533a3df71" target="_blank" rel="noopener">always static</a> (in Scala 2.12, 2.13). If a closure captures the enclosing instance, the static body method has an additional <code>$this</code> parameter. The Java 8 compiler handles this differently, it generates instance methods if the lambda accesses state from the enclosing object.</p></blockquote><p><a href="https://docs.google.com/document/d/1fbkjEL878witxVQpOCbjlvOvadHtVjYXeB-2mgzDTvk/edit#" target="_blank" rel="noopener">Remaining issues for Spark on 2.12</a></p><ul><li>Python 同样是 lambda，但多了 local defs 和 top-level functions</li></ul><hr><p>值得一读：<br><a href="http://bytepadding.com/big-data/spark/understanding-spark-serialization/" target="_blank" rel="noopener">Understanding Spark Serialization</a><br><a href="https://www.logicbig.com/tutorials/core-java-tutorial/java-8-enhancements/java-lambda-functional-aspect.html" target="_blank" rel="noopener"><br>What Lambda Expressions are compiled to? What is their runtime behavior?</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Java" scheme="http://perfectday20.me/tags/Java/"/>
+    
+      <category term="Scala" scheme="http://perfectday20.me/tags/Scala/"/>
+    
+      <category term="Spark" scheme="http://perfectday20.me/tags/Spark/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20180819 Login Shell &amp; Variable</title>
+    <link href="http://perfectday20.me/2018/08/19/20180819-Login-Shell-Variable/"/>
+    <id>http://perfectday20.me/2018/08/19/20180819-Login-Shell-Variable/</id>
+    <published>2018-08-19T13:30:58.000Z</published>
+    <updated>2018-08-19T13:31:12.308Z</updated>
+    
+    <content type="html"><![CDATA[<ol><li>Login shell 就是登录时的 shell， 用 echo $0 会前缀 ‘-‘，如 ‘-bash’；会读取 profile 类文件，如 ~/.bash_profile，.bash_profile 中一般有语句会读取 ~/.bashrc</li><li>Non-login shell 是被调用的 shell 或者脚本，不会读取 profile 类文件，如果是 interactive 的，会读取 .bashrc 文件</li><li>rc 文件都是 interactive shell 会读取的</li><li>Environment variable 一般放在 profile 文件中，用 export a=b 配置，这样整个 session 只会读一次</li><li>Local variable 放在 rc 文件中，用 a=b 配置，这个每个打开的 shell 都会读一次</li></ol><hr><p>参考：<br><a href="http://howtolamp.com/articles/difference-between-login-and-non-login-shell/" target="_blank" rel="noopener">Difference between Login shell and Non login shell</a><br><a href="http://howtolamp.com/articles/bash-startup-scripts/" target="_blank" rel="noopener">Bash startup scripts</a><br><a href="http://howtolamp.com/articles/difference-between-local-and-environment-variables#environment" target="_blank" rel="noopener">Difference between Local Variables and Environment Variables</a><br><a href="https://stackoverflow.com/questions/415403/whats-the-difference-between-bashrc-bash-profile-and-environment" target="_blank" rel="noopener">What’s the difference between .bashrc, .bash_profile, and .environment?</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Shell" scheme="http://perfectday20.me/tags/Shell/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20180817 Spark Logging</title>
+    <link href="http://perfectday20.me/2018/08/19/20180817-Spark-Logging/"/>
+    <id>http://perfectday20.me/2018/08/19/20180817-Spark-Logging/</id>
+    <published>2018-08-19T13:30:15.000Z</published>
+    <updated>2018-08-19T13:30:43.183Z</updated>
+    
+    <content type="html"><![CDATA[<p>以下为魔改版 Spark 的使用情况，并不一定适用于官方版本</p><ol><li>最简单的方法，不配置其它日志选项，直接修改 conf/log4j.properties，配置 Appender 为 System.out 或 err，可以在 yarn web 的 Application Master 一栏的 logs 中看到 stdout 和 stderr 的日志记录，这个是 AM container 的日志</li><li>麻烦点可以在 spark-defaults.conf 或者 spark-submit 时传入 -Dlog4j.configuration=some-log4j.properties，不用在 spark-submit 配置 –files=path/some-log4j.properties </li><li>但是如果只配置 Appender 为 RollingFile，在以上是看不到日志的（因为是yarn收集的 stdout 和 stderr 的日志？）</li><li>在 SparkUI 中的 executors 的 logs 一栏中，stdout 是 executor 执行 println 代码的输出，网址为“/stdout?start=-4096”；而 stderr 因为网址有误为 “spark.log?start=-4096“ 导致没有东西，改为”/stderr?start=-4096“ 即可看到 container 的日志</li><li>在 client 模式下，可以使用 File Appender，用于保存日志</li><li>在 cluster 模式下，使用 console Appender 可在 yarn 中看到日志，但是本地也会有一些状态输出</li></ol><table><thead><tr><th>spark-defaults.conf</th><th>spark-submit</th><th>jar-resources</th><th>driver 效果</th><th>executor 效果</th></tr></thead><tbody><tr><td>不设置-Dlog4j.configuration=log4j.properties</td><td>没有 –files</td><td>没有log4j.properties</td><td>使用conf下的配置</td><td>未生效</td></tr><tr><td>设置 spark.executor.extraJavaOptions -Dlog4j.configuration=log4j.properties</td><td>没有 –files</td><td>没有log4j.properties</td><td>使用conf下的配置</td><td>未生效</td></tr><tr><td>设置 spark.executor.extraJavaOptions -Dlog4j.configuration=log4j.properties</td><td>有 –files</td><td>没有log4j.properties</td><td>使用conf下的配置</td><td>未生效</td></tr><tr><td>不设置 spark.executor.extraJavaOptions</td><td>没有 –files</td><td>有log4j.properties</td><td>使用conf下的配置</td><td>未生效</td></tr><tr><td>不设置 spark.executor.extraJavaOptions</td><td>有 –files</td><td>没有log4j.properties</td><td>client 使用conf下的配置, cluster 使用上传的配置</td><td>未生效</td></tr></tbody></table><p>总之 driver 配置容易改，executor 配置不知道怎么改……<br>executor 一直读取 spark core 中 /org/apache/spark/log4j-defaults.properties 的配置</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Spark" scheme="http://perfectday20.me/tags/Spark/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>20180811</title>
+    <link href="http://perfectday20.me/2018/08/11/20180811/"/>
+    <id>http://perfectday20.me/2018/08/11/20180811/</id>
+    <published>2018-08-11T09:33:22.000Z</published>
+    <updated>2018-08-11T09:33:49.694Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="functions"><a href="#functions" class="headerlink" title="functions"></a>functions</h2><ol><li>在处理 Dataset 中的集合类型时，一些在 functions 中常用的方法： array_contains, size, collect_set, collect_list；如获取数组最后一个元素 col.getItem(size(prices).minus(1))</li><li>对于要判断 Map 是否包含 key，不使用 UDF 的话，暂时发现在 2.3 以前只能用 ‘col.getItem(key).isNotNull，但是这样会过滤掉 value == null 的情况，如果是需要 value 的情况下还是可用的；在 2.3 functions 新增了 map_keys，需要搭配 array_contains 使用进行判断，但这样似乎计算成本较高，需要和使用 UDF 进行对比</li><li>使用 explode 时，结果中自动过滤了集合为空的行，可以省一步过滤；对 functions 中方法使用后的列名没有发现可参考的地方，只能看源码，比如 explode 对 array 使用后列名为 col，对 map 使用后为 key, value</li><li>substring， 1 based，pos 可以传入负值表示从后计数；在 Spark 的实现中 pos 从0开始和从1开始是一样的；但要注意 pos=0 在不同的数据库中效果不同，比如 SQL SERVER 中是当成空字符导致结果长度短 1 位，而 MySQL 则不出结果</li></ol><h2 id="Dataset"><a href="#Dataset" class="headerlink" title="Dataset"></a>Dataset</h2><ol><li>在 Java 中使用 Dataset.transform 时需要继承 AbstractFunction1，而不是 Function1，因为 Function1 使用了 @specialized，编译时会根据原始类型产生对应方法，假如实现这个接口，需要覆盖所有的方法</li></ol>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        
+        
+          
+        
+      
+    
+    </summary>
+    
+    
+      <category term="Spark" scheme="http://perfectday20.me/tags/Spark/"/>
+    
+  </entry>
+  
+</feed>
