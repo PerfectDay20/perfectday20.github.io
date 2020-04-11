@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>20180529 implicit in Scala | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="implicit conversion 格式进化 12345// 原来需要写一个class，然后加上一个implicit def作为转换，如  case class Foo(i:Int)  implicit def toFoo(i:Int) = Foo(i)// 后来进化到直接在类前机上implicit，则编译器自动生成转换方法，如  implicit case class Foo(i:Int)">
+<meta name="keywords" content="Scala">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20180529 implicit in Scala">
+<meta property="og:url" content="http://perfectday20.me/2018/05/29/20180529/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="implicit conversion 格式进化 12345// 原来需要写一个class，然后加上一个implicit def作为转换，如  case class Foo(i:Int)  implicit def toFoo(i:Int) = Foo(i)// 后来进化到直接在类前机上implicit，则编译器自动生成转换方法，如  implicit case class Foo(i:Int)">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2018-06-02T03:05:16.860Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="20180529 implicit in Scala">
+<meta name="twitter:description" content="implicit conversion 格式进化 12345// 原来需要写一个class，然后加上一个implicit def作为转换，如  case class Foo(i:Int)  implicit def toFoo(i:Int) = Foo(i)// 后来进化到直接在类前机上implicit，则编译器自动生成转换方法，如  implicit case class Foo(i:Int)">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20&#39;s Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="single-20180529" class="article article-type-single" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/05/29/20180529/" class="article-date">
+  <time datetime="2018-05-29T14:40:05.000Z" itemprop="datePublished">2018-05-29</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      20180529 implicit in Scala
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol>
+<li><p>implicit conversion 格式进化</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 原来需要写一个class，然后加上一个implicit def作为转换，如</span></span><br><span class="line">  <span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Foo</span>(<span class="params">i:<span class="type">Int</span></span>)</span></span><br><span class="line"><span class="class">  <span class="title">implicit</span> <span class="title">def</span> <span class="title">toFoo</span>(<span class="params">i:<span class="type">Int</span></span>) </span>= <span class="type">Foo</span>(i)</span><br><span class="line"><span class="comment">// 后来进化到直接在类前机上implicit，则编译器自动生成转换方法，如</span></span><br><span class="line">  <span class="keyword">implicit</span> <span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Foo</span>(<span class="params">i:<span class="type">Int</span></span>)</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>implicit parameter 格式进化</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 原来需命名implicit参数，并在body中使用该变量名，如</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>[<span class="type">T</span>](a:<span class="type">T</span>)(<span class="keyword">implicit</span> ordering: <span class="type">Ordering</span>[<span class="type">T</span>])=&#123;</span><br><span class="line">    ordering.gt(???)</span><br><span class="line">  &#125;</span><br><span class="line"><span class="comment">// 2. 后来可以不用变量名，使用implicitly方法，如</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>[<span class="type">T</span>](a:<span class="type">T</span>)(<span class="keyword">implicit</span> ordering: <span class="type">Ordering</span>[<span class="type">T</span>])=&#123;</span><br><span class="line">    implicitly[<span class="type">Ordering</span>[<span class="type">T</span>]].gt(???)</span><br><span class="line">  &#125;</span><br><span class="line"><span class="comment">// 3. 最后进化到使用context bounds，不用添加implicit参数列表，如</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>[<span class="type">T</span>:<span class="type">Ordering</span>](a:<span class="type">T</span>)=&#123;</span><br><span class="line">    implicitly[<span class="type">Ordering</span>[<span class="type">T</span>]].gt(???)</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>implicit conversion 和 implicit parameter 可以叠加使用，比如</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">small</span></span>[<span class="type">T</span>:<span class="type">Ordering</span>](t1: <span class="type">T</span>, t2:<span class="type">T</span>) = &#123;</span><br><span class="line">    <span class="keyword">import</span> <span class="type">Ordered</span>._</span><br><span class="line">    <span class="keyword">if</span> (t1 &lt; t2) t1 <span class="keyword">else</span> t2</span><br><span class="line">  &#125;</span><br><span class="line"><span class="comment">// 这里又一个隐式变量: Ordering[T]，然后Ordered trait中有一个orderingToOrdered方法接受这个隐式变量，将t1转换为Ordered对象，就拥有了'&lt;'这个方法</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>隐式转换只能被编译器使用一次，但是int -&gt; double这种数字类型转换和子类当作父类使用这种转换其实是属于 Weak Conformance，所以和隐式转换可以叠加使用，比如</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span>(<span class="params">val i: <span class="type">Int</span></span>)</span></span><br><span class="line"><span class="class"><span class="title">case</span> <span class="title">class</span> <span class="title">B</span>(<span class="params">j: <span class="type">Int</span></span>) <span class="keyword">extends</span> <span class="title">A</span>(<span class="params">j</span>)</span></span><br><span class="line"><span class="class"><span class="title">case</span> <span class="title">class</span> <span class="title">C</span>(<span class="params">k: <span class="type">Int</span></span>) </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>(c: <span class="type">C</span>) = <span class="number">1</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">implicit</span> <span class="function"><span class="keyword">def</span> <span class="title">aToC</span></span>(a: <span class="type">A</span>) = <span class="type">C</span>(a.i)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> b = <span class="type">B</span>(<span class="number">1</span>)</span><br><span class="line"><span class="keyword">val</span> c = <span class="type">C</span>(<span class="number">2</span>)</span><br><span class="line"><span class="comment">// 这里b是B类型，当时可以作为父类A使用，被通过aToC隐式转换为C</span></span><br><span class="line">c.foo(b)</span><br><span class="line">b.foo(c)</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h2><ol>
+<li>IntelliJ IDEA Command+Shift+P show implicit parameter, 分析方法用的是哪个参数</li>
+<li>implicit 放在val前，可以被隐式导入</li>
+<li>放在方法的参数前，导入隐式变量</li>
+<li>放在类前，生成隐式转换方法</li>
+<li>放在方法前，隐式转换方法</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/29/20180529/" data-id="ck77f00xc000iu7wgz8m008k8" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/29/20180529/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/05/30/20180530/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          20180530
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/05/28/20180528/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">20180528</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 10px;">Airflow</a> <a href="/tags/Java/" style="font-size: 15px;">Java</a> <a href="/tags/Python/" style="font-size: 10px;">Python</a> <a href="/tags/Scala/" style="font-size: 17.5px;">Scala</a> <a href="/tags/Shell/" style="font-size: 12.5px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/02/29/20200229-性能优化总结/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-原理/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/30/20190130-Python-Cyclic-Import-Problem/">20190130 Python Cyclic Import Problem</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/07/20180107-Spark-任务优化方案/">20190107 Spark 任务优化方案</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 Zhang Zhen<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2018/05/29/20180529/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

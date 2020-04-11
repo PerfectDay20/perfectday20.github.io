@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>20180623 Scala Puzzlers-1 | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="Hi There! 花括号中的最后一个语句是返回语句，特别在map等函数中使用 _ 时要注意，如 List(1, 2).map{ println(&amp;quot;Hi&amp;quot;); _ + 1 } UPSTAIRS downstairs; var (HOUR, MINUTE, SECOND) = (12, 0, 0);  多变量赋值是由模式匹配实现的，而在模式匹配中大写开头变量名是要匹配的对象，而">
+<meta name="keywords" content="Scala">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20180623 Scala Puzzlers-1">
+<meta property="og:url" content="http://perfectday20.me/2018/06/23/20180623-Scala-Puzzlers-1/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="Hi There! 花括号中的最后一个语句是返回语句，特别在map等函数中使用 _ 时要注意，如 List(1, 2).map{ println(&amp;quot;Hi&amp;quot;); _ + 1 } UPSTAIRS downstairs; var (HOUR, MINUTE, SECOND) = (12, 0, 0);  多变量赋值是由模式匹配实现的，而在模式匹配中大写开头变量名是要匹配的对象，而">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2018-06-23T14:09:35.272Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="20180623 Scala Puzzlers-1">
+<meta name="twitter:description" content="Hi There! 花括号中的最后一个语句是返回语句，特别在map等函数中使用 _ 时要注意，如 List(1, 2).map{ println(&amp;quot;Hi&amp;quot;); _ + 1 } UPSTAIRS downstairs; var (HOUR, MINUTE, SECOND) = (12, 0, 0);  多变量赋值是由模式匹配实现的，而在模式匹配中大写开头变量名是要匹配的对象，而">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20&#39;s Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-20180623-Scala-Puzzlers-1" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/06/23/20180623-Scala-Puzzlers-1/" class="article-date">
+  <time datetime="2018-06-23T14:08:25.000Z" itemprop="datePublished">2018-06-23</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      20180623 Scala Puzzlers-1
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>Hi There! 花括号中的最后一个语句是返回语句，特别在map等函数中使用 <code>_</code> 时要注意，如 <code>List(1, 2).map{ println(&quot;Hi&quot;); _ + 1 }</code></li>
+<li>UPSTAIRS downstairs; <code>var (HOUR, MINUTE, SECOND) = (12, 0, 0)</code>;  多变量赋值是由模式匹配实现的，而在模式匹配中大写开头变量名是要匹配的对象，而不是要赋值的对象；应只在命名常量时大写</li>
+<li>Location, Location, Location; 类初始化顺序：evaluate args -&gt; early definitions -&gt; superclass constructor -&gt; subclass default constructor</li>
+<li>Now You See Me, Now You Don’t; 子类覆盖父类的 val 时，val 也只能被初始化一次，所以在初始化过程中父类得到的值就是原始值</li>
+<li>The Missing List; <code>def sumSizes(collections: Iterable[Iterable[_]]): Int = collections.map(_.size).sum</code>; 集合使用 <code>map</code> 产生的是同类型的集合，注意 <code>set.map</code>；写参数是 Iterable 的方法时需注意这点，可通过转换成已知集合类型来减少未知的错误，如 <code>toSeq</code>，或使用其他方法代替 <code>map</code></li>
+<li>Arg Arrgh! 同一个参数列表中，前面参数的类型不能用于推断后面参数的类型；应该用currying function</li>
+<li>Caught Up in Closures; 闭包捕获外部 var 时，捕获的是引用，所以外部 var 变化，闭包跟着变化</li>
+<li>Map Conprehension; for 语句中左边参数是模式匹配，相当于 <code>withFilter</code>，会舍去不符合的值</li>
+<li>Init You, Init Me; object和其中的val都是 lazy instantiated，一个 object 可以看作是一个 lazy value；而循环引用加上lazy instantiated就可能造成val值与定义顺序无关，与使用顺序有关；原因是JVM只会初始化一个对象一次</li>
+<li>A Case of Equality; case class 继承其他类A，且类A包含自定义的 <code>hashcode</code> 或 <code>equals</code> 方法时，case class 不会自动生成这些方法</li>
+</ol>
+<blockquote>
+<p><a href="http://scalapuzzlers.com/" target="_blank" rel="noopener">http://scalapuzzlers.com/</a></p>
+</blockquote>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/23/20180623-Scala-Puzzlers-1/" data-id="ck77f00xq0016u7wgfukunctc" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/23/20180623-Scala-Puzzlers-1/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/06/25/20180624-Scala-Puzzlers-2/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          20180624 Scala Puzzlers-2
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/06/21/20180620-pattern-in-for/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">20180620 pattern in for</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 10px;">Airflow</a> <a href="/tags/Java/" style="font-size: 15px;">Java</a> <a href="/tags/Python/" style="font-size: 10px;">Python</a> <a href="/tags/Scala/" style="font-size: 17.5px;">Scala</a> <a href="/tags/Shell/" style="font-size: 12.5px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/02/29/20200229-性能优化总结/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-原理/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/30/20190130-Python-Cyclic-Import-Problem/">20190130 Python Cyclic Import Problem</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/07/20180107-Spark-任务优化方案/">20190107 Spark 任务优化方案</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 Zhang Zhen<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2018/06/23/20180623-Scala-Puzzlers-1/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>
