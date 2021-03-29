@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>20190107 Spark 任务优化方案 | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="对于一系列 Spark 任务的优化, 需要有目的的优化, 将精力花费在瓶颈处, 避免过早优化和盲目优化.  所以需要收集足够的运行信息, 比如设计一个 Dashboard, 对整个任务流程的信息进行收集, 包括输入信息&#x2F;运行时间等. 另外假如这些任务是多人维护的, 有一个详细的文档说明也很重要. 从这些信息中提取公用资源&#x2F;常用资源进行缓存和提前计算, 以减少实际运算时的重复计算. 任务执行前任务输">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20190107 Spark 任务优化方案">
+<meta property="og:url" content="http://perfectday20.me/2019/01/07/20180107-Spark-%E4%BB%BB%E5%8A%A1%E4%BC%98%E5%8C%96%E6%96%B9%E6%A1%88/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="对于一系列 Spark 任务的优化, 需要有目的的优化, 将精力花费在瓶颈处, 避免过早优化和盲目优化.  所以需要收集足够的运行信息, 比如设计一个 Dashboard, 对整个任务流程的信息进行收集, 包括输入信息&#x2F;运行时间等. 另外假如这些任务是多人维护的, 有一个详细的文档说明也很重要. 从这些信息中提取公用资源&#x2F;常用资源进行缓存和提前计算, 以减少实际运算时的重复计算. 任务执行前任务输">
+<meta property="og:locale">
+<meta property="article:published_time" content="2019-01-07T00:47:25.000Z">
+<meta property="article:modified_time" content="2019-01-30T10:53:24.348Z">
+<meta property="article:author" content="Zhang Zhen">
+<meta property="article:tag" content="Spark">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20's Blog" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-20180107-Spark-任务优化方案" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2019/01/07/20180107-Spark-%E4%BB%BB%E5%8A%A1%E4%BC%98%E5%8C%96%E6%96%B9%E6%A1%88/" class="article-date">
+  <time class="dt-published" datetime="2019-01-07T00:47:25.000Z" itemprop="datePublished">2019-01-07</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      20190107 Spark 任务优化方案
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>对于一系列 Spark 任务的优化, 需要有目的的优化, 将精力花费在瓶颈处, 避免过早优化和盲目优化. </p>
+<p>所以需要收集足够的运行信息, 比如设计一个 Dashboard, 对整个任务流程的信息进行收集, 包括输入信息/运行时间等. 另外假如这些任务是多人维护的, 有一个详细的文档说明也很重要. 从这些信息中提取公用资源/常用资源进行缓存和提前计算, 以减少实际运算时的重复计算.</p>
+<h1 id="任务执行前"><a href="#任务执行前" class="headerlink" title="任务执行前"></a>任务执行前</h1><h2 id="任务输入聚合分析"><a href="#任务输入聚合分析" class="headerlink" title="任务输入聚合分析"></a>任务输入聚合分析</h2><p>目的: 分析目前各项任务中哪些条件常用, 给数据缓存提供思路</p>
+<p>需求: 这些任务描述可能已经保存在数据库中, 最好有一个直观的可视化界面, 或者能有定期脚本分析结果, 分任务对条件进行归类聚合,<br>比如本周 A任务输入条件中: 条件1 a次, 条件2 b次, 条件3 c次</p>
+<p>根据常用输入, 可以分析出各种常见模式, 提前计算结果, 或显示在界面上, 用于引导或推荐</p>
+<h1 id="任务执行中"><a href="#任务执行中" class="headerlink" title="任务执行中"></a>任务执行中</h1><h2 id="多个任务共用数据"><a href="#多个任务共用数据" class="headerlink" title="多个任务共用数据"></a>多个任务共用数据</h2><p>目的: 可缓存不同任务共用的中间数据, 防止重复计算</p>
+<p>难点: 各任务逻辑不同, 需熟悉所有执行流程</p>
+<p>解决方案: </p>
+<ol>
+<li>一个人读所有计算逻辑代码</li>
+<li>每个人维护各自计算逻辑文档(初始读取的数据, 中间生成了什么数据, 假如有什么数据会简化计算), 然后根据文档分析</li>
+</ol>
+<h2 id="单个任务常用数据"><a href="#单个任务常用数据" class="headerlink" title="单个任务常用数据"></a>单个任务常用数据</h2><p>从任务输入聚合分析的结果中找到常用数据<br>这些数据可以采用 Parquet 保存, 所以可以使用明文, 不需要转成 id</p>
+<p>影响: 任务的数据加载部分需要修改<br>问题: 如何验证数据加载/提取/过滤这一块是瓶颈? (根据 Spark 运行记录)</p>
+<h2 id="优化计算资源占用-内存-CPU"><a href="#优化计算资源占用-内存-CPU" class="headerlink" title="优化计算资源占用(内存/CPU)"></a>优化计算资源占用(内存/CPU)</h2><p>目的: 增大并行任务数</p>
+<p>解决方案: 分析各任务 Spark 流程图, 看是否占用较多资源</p>
+<h1 id="任务执行后"><a href="#任务执行后" class="headerlink" title="任务执行后"></a>任务执行后</h1><h2 id="任务时间统计"><a href="#任务时间统计" class="headerlink" title="任务时间统计"></a>任务时间统计</h2><p>目的: 寻找整个系统瓶颈</p>
+<p>需求: 输出各任务执行时间, 最好有甘特图等</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2019/01/07/20180107-Spark-%E4%BB%BB%E5%8A%A1%E4%BC%98%E5%8C%96%E6%96%B9%E6%A1%88/" data-id="ckmuaon5c003wjhnu7q734b6i" data-title="20190107 Spark 任务优化方案" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2019/01/07/20180107-Spark-%E4%BB%BB%E5%8A%A1%E4%BC%98%E5%8C%96%E6%96%B9%E6%A1%88/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/01/30/20190130-Python-Cyclic-Import-Problem/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          20190130 Python Cyclic Import Problem
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/12/09/20181209-Coursera-Mind-Shift/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">20181209 Coursera: Mind Shift</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a target="_blank" rel="noopener" href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Airflow/" rel="tag">Airflow</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Python/" rel="tag">Python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 12px;">Airflow</a> <a href="/tags/Java/" style="font-size: 16px;">Java</a> <a href="/tags/Python/" style="font-size: 12px;">Python</a> <a href="/tags/Scala/" style="font-size: 18px;">Scala</a> <a href="/tags/Shell/" style="font-size: 14px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a> <a href="/tags/java/" style="font-size: 10px;">java</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">March 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">April 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/03/29/20210329-write-orc-in-pojo/">20210329 Write ORC in POJO</a>
+          </li>
+        
+          <li>
+            <a href="/2020/04/11/20200411-collectd-to-influxdb-data-format/">20200411 collectd to InfluxDB data format</a>
+          </li>
+        
+          <li>
+            <a href="/2020/02/29/20200229-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%80%BB%E7%BB%93/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-%E5%8E%9F%E7%90%86/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2021 Zhang Zhen<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2019/01/07/20180107-Spark-%E4%BB%BB%E5%8A%A1%E4%BC%98%E5%8C%96%E6%96%B9%E6%A1%88/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.async = true;
+    dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

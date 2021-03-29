@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>20180604 还是括号问题 | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="在测试 partial function 的时候写出了如下代码1234def divide(i: Int): PartialFunction[Int, Int] &#x3D; &amp;#123;   case x if x !&#x3D; 0 &#x3D;&gt; 42 &#x2F; x&amp;#125;println(divide(2)) &#x2F;&#x2F; result: &lt;function1&gt; 希望输出结果是21，但却是一个function，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20180604 还是括号问题">
+<meta property="og:url" content="http://perfectday20.me/2018/06/05/20180604-%E8%BF%98%E6%98%AF%E6%8B%AC%E5%8F%B7%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="在测试 partial function 的时候写出了如下代码1234def divide(i: Int): PartialFunction[Int, Int] &#x3D; &amp;#123;   case x if x !&#x3D; 0 &#x3D;&gt; 42 &#x2F; x&amp;#125;println(divide(2)) &#x2F;&#x2F; result: &lt;function1&gt; 希望输出结果是21，但却是一个function，">
+<meta property="og:locale">
+<meta property="article:published_time" content="2018-06-04T23:53:01.000Z">
+<meta property="article:modified_time" content="2018-06-04T23:54:15.551Z">
+<meta property="article:author" content="Zhang Zhen">
+<meta property="article:tag" content="Scala">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20's Blog" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-20180604-还是括号问题" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/05/20180604-%E8%BF%98%E6%98%AF%E6%8B%AC%E5%8F%B7%E9%97%AE%E9%A2%98/" class="article-date">
+  <time class="dt-published" datetime="2018-06-04T23:53:01.000Z" itemprop="datePublished">2018-06-05</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      20180604 还是括号问题
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>在测试 partial function 的时候写出了如下代码<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">divide</span></span>(i: <span class="type">Int</span>): <span class="type">PartialFunction</span>[<span class="type">Int</span>, <span class="type">Int</span>] = &#123; </span><br><span class="line">  <span class="keyword">case</span> x <span class="keyword">if</span> x != <span class="number">0</span> =&gt; <span class="number">42</span> / x</span><br><span class="line">&#125;</span><br><span class="line">println(divide(<span class="number">2</span>)) <span class="comment">// result: &lt;function1&gt;</span></span><br></pre></td></tr></table></figure>
+希望输出结果是21，但却是一个function，迷惑了好久，后来发现问题在于定义中的 <code>i</code>，这其实是对函数定义不清造成的。<br>a. 上面代码其实是一个currying function，所以要调用的话需要两个参数，如 <code>divide(1)(2)</code>，当然第一个参数在这里没有意义<br>b. 如果写成 <code>def divide(): ...</code> 的话，就需要这样调用<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">divide()(<span class="number">2</span>) <span class="comment">// 21</span></span><br><span class="line">divide.apply(<span class="number">2</span>) <span class="comment">// 21</span></span><br><span class="line">divide(<span class="number">2</span>) <span class="comment">// 错误，因为第一个括号不接受参数</span></span><br></pre></td></tr></table></figure>
+当然不建议这种定义方式，因为没有副作用就不用写括号<br>c. 如果写成 <code>def divide: ...</code> 的话，就需要这样调用 <code>divide(2)</code>；实质上 <code>divide</code> 本身返回了一个函数，相当于 <code>divide.apply(2)</code></li>
+</ol>
+<ol start="2">
+<li><a target="_blank" rel="noopener" href="https://docs.scala-lang.org/style/method-invocation.html">方法调用</a><br>a. Infix notation；适用于运算符，所有以字母开头的方法，不建议使用，如 <code>names mkString &quot;,&quot;</code>，例外是比较像运算符且符合交换性的，如 <code>a max b</code><br>b. Postfix Notation；不建议使用</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/05/20180604-%E8%BF%98%E6%98%AF%E6%8B%AC%E5%8F%B7%E9%97%AE%E9%A2%98/" data-id="ckmuaon4h001tjhnu8t0r59bx" data-title="20180604 还是括号问题" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/05/20180604-%E8%BF%98%E6%98%AF%E6%8B%AC%E5%8F%B7%E9%97%AE%E9%A2%98/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/06/06/20180605/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          20180605
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/06/03/20180603/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">20180603 view</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a target="_blank" rel="noopener" href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Airflow/" rel="tag">Airflow</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Python/" rel="tag">Python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 12px;">Airflow</a> <a href="/tags/Java/" style="font-size: 16px;">Java</a> <a href="/tags/Python/" style="font-size: 12px;">Python</a> <a href="/tags/Scala/" style="font-size: 18px;">Scala</a> <a href="/tags/Shell/" style="font-size: 14px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a> <a href="/tags/java/" style="font-size: 10px;">java</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">March 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">April 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/03/29/20210329-write-orc-in-pojo/">20210329 Write ORC in POJO</a>
+          </li>
+        
+          <li>
+            <a href="/2020/04/11/20200411-collectd-to-influxdb-data-format/">20200411 collectd to InfluxDB data format</a>
+          </li>
+        
+          <li>
+            <a href="/2020/02/29/20200229-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%80%BB%E7%BB%93/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-%E5%8E%9F%E7%90%86/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2021 Zhang Zhen<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2018/06/05/20180604-%E8%BF%98%E6%98%AF%E6%8B%AC%E5%8F%B7%E9%97%AE%E9%A2%98/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.async = true;
+    dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

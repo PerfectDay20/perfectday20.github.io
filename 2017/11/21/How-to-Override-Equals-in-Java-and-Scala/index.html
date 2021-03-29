@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>How to Override Equals in Java and Scala | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="相信读过 《Effective Java》 的读者都已经知道编写 equals 方法的作用与重要性，基本概念不多做解释，这里就总结一下如何编写正确的 equals 方法。 equals 在 Java 和 Scala 中含义相同，都需要满足以下五个条件：  自反性 对称性 传递性 一致性 anyObject.equals(null) &#x3D;&#x3D; false  现在我们有三个问题：  假如我们只有一个类 P">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to Override Equals in Java and Scala">
+<meta property="og:url" content="http://perfectday20.me/2017/11/21/How-to-Override-Equals-in-Java-and-Scala/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="相信读过 《Effective Java》 的读者都已经知道编写 equals 方法的作用与重要性，基本概念不多做解释，这里就总结一下如何编写正确的 equals 方法。 equals 在 Java 和 Scala 中含义相同，都需要满足以下五个条件：  自反性 对称性 传递性 一致性 anyObject.equals(null) &#x3D;&#x3D; false  现在我们有三个问题：  假如我们只有一个类 P">
+<meta property="og:locale">
+<meta property="og:image" content="http://perfectday20.me/images/20171121/equals.png">
+<meta property="article:published_time" content="2017-11-21T14:35:05.000Z">
+<meta property="article:modified_time" content="2018-06-02T02:54:49.952Z">
+<meta property="article:author" content="Zhang Zhen">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="Scala">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://perfectday20.me/images/20171121/equals.png">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20's Blog" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="single-How-to-Override-Equals-in-Java-and-Scala" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2017/11/21/How-to-Override-Equals-in-Java-and-Scala/" class="article-date">
+  <time class="dt-published" datetime="2017-11-21T14:35:05.000Z" itemprop="datePublished">2017-11-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      How to Override Equals in Java and Scala
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>相信读过 《Effective Java》 的读者都已经知道编写 <code>equals</code> 方法的作用与重要性，基本概念不多做解释，这里就总结一下如何编写正确的 <code>equals</code> 方法。</p>
+<p><code>equals</code> 在 Java 和 Scala 中含义相同，都需要满足以下五个条件：</p>
+<ol>
+<li>自反性</li>
+<li>对称性</li>
+<li>传递性</li>
+<li>一致性</li>
+<li><code>anyObject.equals(null) == false</code></li>
+</ol>
+<p>现在我们有三个问题：</p>
+<ol>
+<li>假如我们只有一个类 <code>Person</code>，如何写？</li>
+<li>假如 <code>Person</code> 类有一个子类 <code>Student</code>，相互不能判断（一定返回 <code>false</code>），如何写？相互可以判断，如何写？</li>
+<li>假如 <code>Person</code> 和 <code>Student</code> 可以相互判断，但另一子类 <code>Teacher</code> 只能和同类判断，如何写？</li>
+</ol>
+<h2 id="Java"><a href="#Java" class="headerlink" title="Java"></a>Java</h2><p>《Effective Java》 中最后推荐的写法步骤是：</p>
+<ol>
+<li>通过 <code>==</code> 判断是否是同一个对象</li>
+<li>用 <code>instanceof</code> 判断是否是正确的类型，注意这里已经包含了 <code>null</code> 的情况，所以不用单独另写</li>
+<li>将对象转换成正确的类型</li>
+<li>对需要判断的域分别进行对比</li>
+</ol>
+<p>需要注意，基本类型用 <code>==</code> 判断，例外是 <code>float</code> 用 <code>Float.compare</code>，<code>double</code> 用 <code>Double.compare</code>，因为有 <code>NaN</code> 等特殊值存在。</p>
+<p>上述第二步中还有另一个变种，是使用 <code>getClass</code> 进行类型判断，这样的话只有类型完全一致才能返回 <code>true</code>，如果只是单一的类还好，要是涉及类之间的继承，则违背了 Liskov Substitution Principle，所以最后书中的结论是：</p>
+<blockquote>
+<p>There is no way to extend an instantiable class and add a value component while preserving the equals contract.</p>
+</blockquote>
+<p>由于现在的 IDE 例如 IntelliJ IDEA 已经可以自动为我们生成 <code>equals</code> 方法，还可以选择是否允许子类判断，是否可为 <code>null</code> 等判断，所以我们就不必手动编写了，但是生成的结果也是符合上面的 4 步的：</p>
+<p><img src="/images/20171121/equals.png" alt=""><br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Person</span></span>&#123;</span><br><span class="line">    <span class="keyword">private</span> String name;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> age;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">equals</span><span class="params">(Object o)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span> == o) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (o == <span class="keyword">null</span> || getClass() != o.getClass()) &#123; <span class="comment">// 不涉及继承，问题 1 和 问题 2 前半的写法</span></span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Person person = (Person) o;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (age != person.age) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> name != <span class="keyword">null</span> ? name.equals(person.name) : person.name == <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Override</span> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">equals</span><span class="params">(Object o)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span> == o) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (!(o <span class="keyword">instanceof</span> Person)) &#123; <span class="comment">// 涉及继承，使得与子类之间也可以判断，问题 2 后半的写法</span></span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Person person = (Person) o;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (age != person.age) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> name != <span class="keyword">null</span> ? name.equals(person.name) : person.name == <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></p>
+<h2 id="Scala"><a href="#Scala" class="headerlink" title="Scala"></a>Scala</h2><p>scala 中编写的方式大致相同，但是结合其语法，相比似乎又简单又繁琐。<br>简单是指当没有子类，或和子类判断一定为 <code>false</code> 时（违反LSP），可以这样写：<br><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="params">val name: <span class="type">String</span>, val age: <span class="type">Int</span></span>) </span>&#123; </span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">equals</span></span>(other: <span class="type">Any</span>): <span class="type">Boolean</span> = other <span class="keyword">match</span> &#123; <span class="comment">// 问题 1 的写法</span></span><br><span class="line">    <span class="keyword">case</span> that: <span class="keyword">this</span>.getClass == that.getClass &amp;&amp;</span><br><span class="line">                <span class="type">Person</span> =&gt; name == that.name &amp;&amp; </span><br><span class="line">                age == that.age</span><br><span class="line">    <span class="keyword">case</span> _ =&gt; <span class="literal">false</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><br>繁琐是指假如这时出现了一个子类 <code>Student</code> 且增加了一个域 <code>sid</code>，假如我们需要两个类可相互判断，则上述方法在判断一个 <code>Person</code> 对象和一个 <code>Student</code> 对象时一定会返回 <code>false</code>。</p>
+<p>因此《Programming in Scala》中建议采用如下的编写方式：<br><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="params">val name: <span class="type">String</span>, val age: <span class="type">Int</span></span>) </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">canEqual</span></span>(other: <span class="type">Any</span>): <span class="type">Boolean</span> = other.isInstanceOf[<span class="type">Person</span>]</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">equals</span></span>(other: <span class="type">Any</span>): <span class="type">Boolean</span> = other <span class="keyword">match</span> &#123; <span class="comment">// 问题 2 的写法</span></span><br><span class="line">    <span class="keyword">case</span> that: <span class="type">Person</span> =&gt;</span><br><span class="line">      (that canEqual <span class="keyword">this</span>) &amp;&amp;</span><br><span class="line">        name == that.name &amp;&amp;</span><br><span class="line">        age == that.age</span><br><span class="line">    <span class="keyword">case</span> _ =&gt; <span class="literal">false</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Student</span>(<span class="params">override val name: <span class="type">String</span>, override val age: <span class="type">Int</span>, val sid: <span class="type">Int</span></span>) <span class="keyword">extends</span> <span class="title">Person</span>(<span class="params">name, age</span>)</span>&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><br>上面 <code>canEqual</code> 方法的作用和 Java 代码中判断 <code>instanceof</code> 的作用是一致的，但比 Java 中的判断更加灵活，比如可以限定不同子类与父类的判断关系。</p>
+<p>比如有一个 <code>Person</code> 的子类 <code>Teacher</code>，我们希望它只能和 <code>Teacher</code> 类进行判断，与 <code>Person</code> 和 <code>Student</code> 判断都返回 <code>false</code>，该如何写呢？一种错误的写法如下：<br><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Teacher</span>(<span class="params">override val name: <span class="type">String</span>, override val age: <span class="type">Int</span>, val tid: <span class="type">Int</span></span>) <span class="keyword">extends</span> <span class="title">Person</span>(<span class="params">name, age</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">equals</span></span>(other: <span class="type">Any</span>): <span class="type">Boolean</span> = other <span class="keyword">match</span> &#123;</span><br><span class="line">    <span class="keyword">case</span> that: <span class="type">Teacher</span> =&gt;</span><br><span class="line">      <span class="keyword">this</span>.getClass == that.getClass &amp;&amp;</span><br><span class="line">        name == that.name &amp;&amp;</span><br><span class="line">        age == that.age</span><br><span class="line">    <span class="keyword">case</span> _ =&gt; <span class="literal">false</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> s1 = <span class="keyword">new</span> <span class="type">Student</span>(<span class="string">&quot;z&quot;</span>, <span class="number">1</span>, <span class="number">2</span>)</span><br><span class="line"><span class="keyword">val</span> t1 = <span class="keyword">new</span> <span class="type">Teacher</span>(<span class="string">&quot;z&quot;</span>, <span class="number">1</span>, <span class="number">2</span>)</span><br><span class="line">println(s1 == t1) <span class="comment">// true</span></span><br><span class="line">println(t1 == s1) <span class="comment">// false 违反了对称性</span></span><br></pre></td></tr></table></figure><br>正确的写法应该是：<br><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Teacher</span>(<span class="params">override val name: <span class="type">String</span>, override val age: <span class="type">Int</span>, val tid: <span class="type">Int</span></span>) <span class="keyword">extends</span> <span class="title">Person</span>(<span class="params">name, age</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">canEqual</span></span>(other: <span class="type">Any</span>): <span class="type">Boolean</span> = other.isInstanceOf[<span class="type">Teacher</span>]</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">equals</span></span>(other: <span class="type">Any</span>): <span class="type">Boolean</span> = other <span class="keyword">match</span> &#123; <span class="comment">// 问题 3 的写法</span></span><br><span class="line">    <span class="keyword">case</span> that: <span class="type">Teacher</span> =&gt;</span><br><span class="line">      <span class="keyword">super</span>.equals(that) &amp;&amp;</span><br><span class="line">        (that canEqual <span class="keyword">this</span>) &amp;&amp;</span><br><span class="line">        name == that.name &amp;&amp;</span><br><span class="line">        age == that.age &amp;&amp;</span><br><span class="line">        tid == that.tid</span><br><span class="line">    <span class="keyword">case</span> _ =&gt; <span class="literal">false</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><br>注意只覆盖了 <code>canEqual</code> 方法也会违反对称性。在 Java 中要实现相同的效果，则也需要编写类似的 <code>canEqual</code> 方法，就留给读者自己考虑了。</p>
+<p>总之，在编写单个类的 <code>equals</code> 方法时比较简单，当涉及子类继承时，就要多考虑一下了。</p>
+<p>另外不要忘记覆盖 <code>hashcode</code> 方法哦。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2017/11/21/How-to-Override-Equals-in-Java-and-Scala/" data-id="ckmuaon3c0000jhnu8ahtavxh" data-title="How to Override Equals in Java and Scala" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2017/11/21/How-to-Override-Equals-in-Java-and-Scala/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/01/19/Java-Object-Size-in-Memory/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Java对象占用内存计算
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2017/11/18/Split-in-Java/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Split in Java</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a target="_blank" rel="noopener" href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Airflow/" rel="tag">Airflow</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Python/" rel="tag">Python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 12px;">Airflow</a> <a href="/tags/Java/" style="font-size: 16px;">Java</a> <a href="/tags/Python/" style="font-size: 12px;">Python</a> <a href="/tags/Scala/" style="font-size: 18px;">Scala</a> <a href="/tags/Shell/" style="font-size: 14px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a> <a href="/tags/java/" style="font-size: 10px;">java</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">March 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">April 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/03/29/20210329-write-orc-in-pojo/">20210329 Write ORC in POJO</a>
+          </li>
+        
+          <li>
+            <a href="/2020/04/11/20200411-collectd-to-influxdb-data-format/">20200411 collectd to InfluxDB data format</a>
+          </li>
+        
+          <li>
+            <a href="/2020/02/29/20200229-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%80%BB%E7%BB%93/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-%E5%8E%9F%E7%90%86/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2021 Zhang Zhen<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2017/11/21/How-to-Override-Equals-in-Java-and-Scala/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.async = true;
+    dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
