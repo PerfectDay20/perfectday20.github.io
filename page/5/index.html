@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="PerfectDay20&#39;s Blog">
+<meta property="og:url" content="http://perfectday20.me/page/5/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:locale">
+<meta property="article:author" content="Zhang Zhen">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20's Blog" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-20180608" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/09/20180608/" class="article-date">
+  <time class="dt-published" datetime="2018-06-09T01:36:40.000Z" itemprop="datePublished">2018-06-09</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/06/09/20180608/">20180608</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>Array，Map都可以看作是PartialFunction</li>
+<li>buffer，set 等的 xs += (a, b, c) 操作不是增加了一个tuple，而是加了三个参数，把+=看成方法，则括号里边的是参数更容易理解</li>
+<li>在对Dataset的多列进行相同处理时，可以使用 <code>foldLeft</code>，如<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>(col: <span class="type">String</span>): <span class="type">Column</span> = ???</span><br><span class="line"><span class="keyword">val</span> newDS = <span class="type">Seq</span>(<span class="string">&quot;col1&quot;</span>, <span class="string">&quot;col2&quot;</span>, <span class="string">&quot;col3&quot;</span>).foldLeft(oldDS) &#123; (tmpDS, col) =&gt; tmpDS.withColumn(col, foo(col)) &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 其实对一个对象进行多次操作，都可以用foldLeft代替for循环</span></span><br><span class="line"><span class="keyword">val</span> m = mutable.<span class="type">Map</span>(<span class="number">1</span> -&gt; <span class="number">2</span>, <span class="number">3</span> -&gt; <span class="number">4</span>)</span><br><span class="line"><span class="type">Seq</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>).foldLeft(m) &#123; (m, i) =&gt; m(i) = <span class="number">0</span>; m &#125;</span><br></pre></td></tr></table></figure>
+<a target="_blank" rel="noopener" href="https://medium.com/@mrpowers/performing-operations-on-multiple-columns-in-a-spark-dataframe-with-foldleft-42133f82de04">Performing operations on multiple columns in a Spark DataFrame with foldLeft</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/09/20180608/" data-id="ckmuaon4k0021jhnuhaap69uz" data-title="20180608" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/09/20180608/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-20180607" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/08/20180607/" class="article-date">
+  <time class="dt-published" datetime="2018-06-07T23:35:09.000Z" itemprop="datePublished">2018-06-08</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/06/08/20180607/">20180607</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>Java的 <code>File.deleteOnExit()</code> 在JVM异常退出时不会执行，所以不能根据是否存在进程生成的pid文件判断是否正在运行，还得直接查询进程</li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/3043978/how-to-check-if-a-process-id-pid-exists">查询进程方法</a><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> ps -p <span class="string">&quot;<span class="variable">$&#123;pid&#125;</span>&quot;</span> &gt; /dev/null; <span class="keyword">then</span></span><br><span class="line">  <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$&#123;pid&#125;</span> is running&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></li>
+<li>读tab分隔的文件，可以直接创建schema，然后利用 <code>DataFrameReader</code> 的 <code>csv</code>方法；这样省去了自己切割及创建bean类及转换对象等操作<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> schema = <span class="type">StructType</span>(<span class="type">Seq</span>(<span class="type">StructField</span>(<span class="string">&quot;name&quot;</span>, <span class="type">StringType</span>), <span class="type">StructField</span>(<span class="string">&quot;age&quot;</span>, <span class="type">IntegerType</span>)))</span><br><span class="line"><span class="keyword">val</span> ds = spark.read.option(<span class="string">&quot;sep&quot;</span>, <span class="string">&quot;\t&quot;</span>)</span><br><span class="line">  .schema(schema)</span><br><span class="line">  .option(<span class="string">&quot;mode&quot;</span>, <span class="string">&quot;DROPMALFORMED&quot;</span>)</span><br><span class="line">  .option(<span class="string">&quot;ignoreLeadingWhiteSpace&quot;</span>,<span class="string">&quot;true&quot;</span>)</span><br><span class="line">  .option(<span class="string">&quot;ignoreTrailingWhiteSpace&quot;</span>,<span class="string">&quot;true&quot;</span>)</span><br><span class="line">  .csv(<span class="string">&quot;path&quot;</span>)</span><br><span class="line">  </span><br><span class="line"><span class="comment">// schema 也可以由 case class 获得</span></span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="params">name:<span class="type">String</span>, age:<span class="type">Int</span></span>)</span></span><br><span class="line"><span class="class"><span class="title">val</span> <span class="title">schema</span> </span>= <span class="type">Encoders</span>.product[<span class="type">Person</span>].schema</span><br><span class="line"></span><br><span class="line"><span class="comment">// 直接 as 是不行的，因为列名默认是 [_c0, _c1]</span></span><br><span class="line"><span class="keyword">val</span> ds = spark.read.option(<span class="string">&quot;sep&quot;</span>, <span class="string">&quot;\t&quot;</span>).csv(<span class="string">&quot;path&quot;</span>).as[<span class="type">Person</span>]</span><br></pre></td></tr></table></figure></li>
+<li>写Spark的时候经常需要对 <code>Dataset</code> 做一些复杂的转换，这时利用 <code>Dataset.transform(someOperation)</code> 可以更好地复用代码，更易读，更易测试</li>
+<li>Dataset transform方法，Column方法，UDF 正好对应了 Dataset=&gt;Dataset, Column=&gt;Column, T=&gt;U 这三种类型；总之还是尽量使用Spark native API，少用UDF</li>
+</ol>
+<p><a target="_blank" rel="noopener" href="https://medium.com/@mrpowers/the-different-type-of-spark-functions-custom-transformations-column-functions-udfs-bf556c9d0ce7">The different type of Spark functions (custom transformations, column functions, UDFs)</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/08/20180607/" data-id="ckmuaon4j001zjhnufz078tth" data-title="20180607" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/08/20180607/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-20180606-fold-reduce-aggregate" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/07/20180606-fold-reduce-aggregate/" class="article-date">
+  <time class="dt-published" datetime="2018-06-07T00:10:34.000Z" itemprop="datePublished">2018-06-07</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/06/07/20180606-fold-reduce-aggregate/">20180606 fold reduce aggregate</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>fold, reduce, aggregate<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">fold <span class="comment">// 需要初始参数，运算符参数必须为集合元素父类</span></span><br><span class="line">foldLeft <span class="comment">// 区别是运算符参数不需要是集合元素父类</span></span><br><span class="line">foldRight <span class="comment">// 同上</span></span><br><span class="line"></span><br><span class="line">reduce <span class="comment">// 不需要初始参数，因此集合为空会报错，运算符参数必须为集合元素父类</span></span><br><span class="line">reduceLeft </span><br><span class="line">reduceRight</span><br><span class="line"></span><br><span class="line">reduceOption <span class="comment">// 同reduce，但返回Option，集合为空不报错返回None</span></span><br><span class="line">reduceLeftOption</span><br><span class="line">reduceRightOption</span><br><span class="line"></span><br><span class="line">aggregate <span class="comment">// 需要初始参数，聚合结果与集合元素运算符，聚合结果之间的运算符</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 可以将集合元素聚合为非父类结果的操作：foldLeft, foldRight, aggregate</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/07/20180606-fold-reduce-aggregate/" data-id="ckmuaon4j001xjhnu346a9t71" data-title="20180606 fold reduce aggregate" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/07/20180606-fold-reduce-aggregate/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-20180605" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/06/20180605/" class="article-date">
+  <time class="dt-published" datetime="2018-06-05T23:37:54.000Z" itemprop="datePublished">2018-06-06</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/06/06/20180605/">20180605</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>Fibonacci Stream<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">fibFrom</span></span>(a: <span class="type">Int</span>, b: <span class="type">Int</span>): <span class="type">Stream</span>[<span class="type">Int</span>] = a #:: fibFrom(b, a + b)</span><br></pre></td></tr></table></figure></li>
+<li>Dataset 需要使用 <code>show</code> 来输出所有数据时，不能传入 <code>Int.MaxValue</code>，因为 <code>show</code> 的代码里有判断是否有更多数据，从而在数据末尾添加这是top多少行的提示，而这个判断时通过获取 <code>numRows + 1</code> 来实现的，这样传入整型最大值就会造成溢出，可用 <code>Int.MaxValue - 1</code></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/06/20180605/" data-id="ckmuaon4i001vjhnu5pcje75q" data-title="20180605" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/06/20180605/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-20180604-还是括号问题" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/05/20180604-%E8%BF%98%E6%98%AF%E6%8B%AC%E5%8F%B7%E9%97%AE%E9%A2%98/" class="article-date">
+  <time class="dt-published" datetime="2018-06-04T23:53:01.000Z" itemprop="datePublished">2018-06-05</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/06/05/20180604-%E8%BF%98%E6%98%AF%E6%8B%AC%E5%8F%B7%E9%97%AE%E9%A2%98/">20180604 还是括号问题</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>在测试 partial function 的时候写出了如下代码<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">divide</span></span>(i: <span class="type">Int</span>): <span class="type">PartialFunction</span>[<span class="type">Int</span>, <span class="type">Int</span>] = &#123; </span><br><span class="line">  <span class="keyword">case</span> x <span class="keyword">if</span> x != <span class="number">0</span> =&gt; <span class="number">42</span> / x</span><br><span class="line">&#125;</span><br><span class="line">println(divide(<span class="number">2</span>)) <span class="comment">// result: &lt;function1&gt;</span></span><br></pre></td></tr></table></figure>
+希望输出结果是21，但却是一个function，迷惑了好久，后来发现问题在于定义中的 <code>i</code>，这其实是对函数定义不清造成的。<br>a. 上面代码其实是一个currying function，所以要调用的话需要两个参数，如 <code>divide(1)(2)</code>，当然第一个参数在这里没有意义<br>b. 如果写成 <code>def divide(): ...</code> 的话，就需要这样调用<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">divide()(<span class="number">2</span>) <span class="comment">// 21</span></span><br><span class="line">divide.apply(<span class="number">2</span>) <span class="comment">// 21</span></span><br><span class="line">divide(<span class="number">2</span>) <span class="comment">// 错误，因为第一个括号不接受参数</span></span><br></pre></td></tr></table></figure>
+当然不建议这种定义方式，因为没有副作用就不用写括号<br>c. 如果写成 <code>def divide: ...</code> 的话，就需要这样调用 <code>divide(2)</code>；实质上 <code>divide</code> 本身返回了一个函数，相当于 <code>divide.apply(2)</code></li>
+</ol>
+<ol start="2">
+<li><a target="_blank" rel="noopener" href="https://docs.scala-lang.org/style/method-invocation.html">方法调用</a><br>a. Infix notation；适用于运算符，所有以字母开头的方法，不建议使用，如 <code>names mkString &quot;,&quot;</code>，例外是比较像运算符且符合交换性的，如 <code>a max b</code><br>b. Postfix Notation；不建议使用</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/05/20180604-%E8%BF%98%E6%98%AF%E6%8B%AC%E5%8F%B7%E9%97%AE%E9%A2%98/" data-id="ckmuaon4h001tjhnu8t0r59bx" data-title="20180604 还是括号问题" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/05/20180604-%E8%BF%98%E6%98%AF%E6%8B%AC%E5%8F%B7%E9%97%AE%E9%A2%98/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-20180603" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/03/20180603/" class="article-date">
+  <time class="dt-published" datetime="2018-06-03T14:58:15.000Z" itemprop="datePublished">2018-06-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/06/03/20180603/">20180603 view</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>与Spark不同，Scala中集合的transform操作都是strict的，所以都会产生中间集合，除了 <code>view</code> 和 <code>stream</code>。在两种情况下可以考虑使用 <code>view</code>：<br>a. 性能；大集合才明显，小集合反而会因为构造闭包而变慢；或者可以提前停止的，比如<code>take</code> ，<code>first</code> 之类的，比如<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">(<span class="number">1</span> to <span class="number">1000000000</span>).filter(_ % <span class="number">2</span> == <span class="number">0</span>).take(<span class="number">10</span>).toList</span><br><span class="line">(<span class="number">1</span> to <span class="number">1000000000</span>).view.filter(_ % <span class="number">2</span> == <span class="number">0</span>).take(<span class="number">10</span>).toList</span><br><span class="line">(<span class="number">1</span> to <span class="number">1000000000</span>).view.filter(_ % <span class="number">2</span> == <span class="number">0</span>).sum</span><br></pre></td></tr></table></figure>
+b. 作用于可变集合；对集合的一部分生成 <code>view</code> 的 <code>slice</code>，然后套用函数修改，这样有助于模块化，比如下面例子，选取范围和取反操作互相分离<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> arr = (<span class="number">0</span> to <span class="number">9</span>).toArray</span><br><span class="line"><span class="keyword">val</span> subArr = arr.view.slice(<span class="number">3</span>, <span class="number">6</span>)</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">negate</span></span>(xs:mutable.<span class="type">Seq</span>[<span class="type">Int</span>]) = <span class="keyword">for</span>(i&lt;-xs.indices) xs(i) = -xs(i)</span><br><span class="line">negate(subArr)</span><br></pre></td></tr></table></figure>
+使用时注意，由于lazy evaluation的作用，要不使用纯函数式没有副作用的集合转换，要不使用明确的可变集合修改操作，不要既创建集合又产生副作用，比如：<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">(<span class="number">1</span> to <span class="number">10</span>).view.map(i =&gt; <span class="type">Future</span>(println(i))) <span class="comment">// 并不会打印东西</span></span><br></pre></td></tr></table></figure></li>
+<li>Spark处理数据时，对于一些因为格式不正确等需要剔除的数据时，可以使用Accumulator进行统计</li>
+<li>每个stage中的core与task比例一般可设为1:4； <a target="_blank" rel="noopener" href="https://blog.scottlogic.com/2018/03/22/apache-spark-performance.html">这篇文章</a>中遇到的问题是对<code>Boolean</code>值进行了 <code>repartition</code>，导致只有两个分区有数据，最后改成了 <code>write</code> 之后 <code>partitionBy</code> ，解决了并发问题。问题很常见，作者也没有考虑最后保存文件数，总体收获一般</li>
+<li>Bash <code>set -- a b c</code> 可以重设 <code>$1</code>~<code>$3</code> 的值</li>
+<li>Bash <code>[[ ]]</code> 中使用 <code>==</code> 和 <code>=~</code> 时，右边参数被引号包围的部分，就是按照字面进行对比，即<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[[ <span class="string">&quot;foo&quot;</span> == <span class="string">&quot;foo&quot;</span> ]] -&gt; <span class="literal">true</span></span><br><span class="line">[[ <span class="string">&quot;foo&quot;</span> == foo ]] -&gt; <span class="literal">true</span></span><br><span class="line">[[ <span class="string">&quot;foo&quot;</span> == f* ]] -&gt; <span class="literal">true</span></span><br><span class="line">[[ <span class="string">&quot;foo&quot;</span> == <span class="string">&quot;f*&quot;</span> ]] -&gt; <span class="literal">false</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/03/20180603/" data-id="ckmuaon46001ejhnu4aoy6jui" data-title="20180603 view" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/03/20180603/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-20180602-Shell-Style-Guide" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/02/20180602-Shell-Style-Guide/" class="article-date">
+  <time class="dt-published" datetime="2018-06-02T10:42:19.000Z" itemprop="datePublished">2018-06-02</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/06/02/20180602-Shell-Style-Guide/">20180602 Shell Style Guide</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p><a target="_blank" rel="noopener" href="https://google.github.io/styleguide/shell.xml">Google Shell Style Guide</a> 中有对我有指导意义的：</p>
+<ol>
+<li>如果需要使用 <code>$&#123;PIPESTATUS&#125;</code> 之外其他的数组，考虑使用Python</li>
+<li>如果代码超过100行，考虑使用Python</li>
+<li>不要用 <code>.sh</code> 作为可执行文件扩展名，库文件必须用 <code>.sh</code></li>
+<li>使用 <code>STDERR</code> 输出错误信息；推荐使用一个函数同时输出其他状态信息<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">err</span></span>() &#123;</span><br><span class="line">  <span class="built_in">echo</span> <span class="string">&quot;[<span class="subst">$(date +&#x27;%Y-%m-%dT%H:%M:%S%z&#x27;)</span>]: <span class="variable">$@</span>&quot;</span> &gt;&amp;2</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>写文件注释</li>
+<li>写方法注释，包括功能、使用的和改变的全局变量、接受参数、除了最后命令的返回值</li>
+<li>缩进2个空格</li>
+<li>每行不超过80字符；否则使用 <code>here document</code> 或 <code>embedded newline</code></li>
+<li>循环中 <code>; do</code> <code>; then</code> 放在 <code>while</code> <code>for</code> <code>if</code> 同一行</li>
+<li>变量使用时，单个字符除非必要，不使用大括号，如 <code>$1</code> <code>$?</code>；其他都使用</li>
+<li>Never quote literal integers</li>
+<li>Use an explicit path when doing wildcard expansion of filenames: <code>./*</code> instead of  <code>*</code></li>
+<li>方法命名：小写，下划线分隔，需要括号，可不写开头的 <code>function</code></li>
+<li>变量命名同上</li>
+<li>常数及环境变量，大写，下划线分隔，定义在文件开头</li>
+<li>文件名小写，可用下划线分隔</li>
+<li>只读变量使用 <code>readonly</code> 或 <code>declare -r</code></li>
+<li>局部变量使用 <code>local</code>；如果值是从其他命令获得，声明和赋值必须分两行（因为 <code>local</code> 不会传递exit code)<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">my_func</span></span>() &#123;</span><br><span class="line">  <span class="comment"># Separate lines for declaration and assignment:</span></span><br><span class="line">  <span class="built_in">local</span> my_var</span><br><span class="line">  my_var=<span class="string">&quot;<span class="subst">$(my_func)</span>&quot;</span> || <span class="built_in">return</span></span><br><span class="line"></span><br><span class="line">  <span class="comment"># DO NOT do this: $? contains the exit code of &#x27;local&#x27;, not my_func</span></span><br><span class="line">  <span class="built_in">local</span> my_var=<span class="string">&quot;<span class="subst">$(my_func)</span>&quot;</span></span><br><span class="line">  [[ $? -eq 0 ]] || <span class="built_in">return</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>函数位置在常数下，之间不要有可执行代码 </li>
+<li>使用main函数，将程序代码放在其中；main函数放在所有函数之后，调用时使用 <code>main &quot;$@&quot;</code> </li>
+<li>尽量使用 Builtin Commands，而不是外部命令，如 <code>sed</code> 等 </li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/02/20180602-Shell-Style-Guide/" data-id="ckmuaon4h001sjhnuhqmw1mur" data-title="20180602 Shell Style Guide" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/02/20180602-Shell-Style-Guide/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180601" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/01/20180601/" class="article-date">
+  <time class="dt-published" datetime="2018-06-01T14:40:05.000Z" itemprop="datePublished">2018-06-01</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/06/01/20180601/">20180601</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>Scala不支持像Java中用集合调用另一个集合的创建方法，比如 <code>Set&lt;String&gt; set = new HashSet&lt;&gt;(someList)</code>，但是可以使用空集合与已有集合相加，如 <code>val set = HashSet() ++ someList</code></li>
+<li><p>Scala中方法要获取域的值时，是通过方法获得的，所以就会被被override和多态影响，这点和Java不同；所以分析起来也简单一些，可以理解为子类的域覆盖了父类的同名域，任何操作都是直接操作的子类的域；而Java则同时存在父类的域与子类的同名域</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">F1</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> a = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getA</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getF1A</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">F2</span> <span class="keyword">extends</span> <span class="title">F1</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> a = <span class="number">2</span>;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getA</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getF2A</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">JavaTest</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        F2 f2 = <span class="keyword">new</span> F2();</span><br><span class="line">        System.out.println(f2.getF1A()); <span class="comment">// 1</span></span><br><span class="line">        System.out.println(f2.getF2A()); <span class="comment">// 2</span></span><br><span class="line">        System.out.println(f2.getA()); <span class="comment">// 2</span></span><br><span class="line"></span><br><span class="line">        F1 f1 = <span class="keyword">new</span> F2();</span><br><span class="line">        System.out.println(f1.getF1A()); <span class="comment">// 1</span></span><br><span class="line">        System.out.println(f1.getA()); <span class="comment">// 2 多态</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">ScalaTest</span> <span class="keyword">extends</span> <span class="title">App</span> </span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">class</span> <span class="title">F1</span></span>&#123;</span><br><span class="line">    <span class="keyword">val</span> a = <span class="number">1</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">getA</span> </span>= a</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">getF1A</span> </span>= a <span class="comment">// 实际调用a()方法获取a的值，所以会被子类重载</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">class</span> <span class="title">F2</span> <span class="keyword">extends</span> <span class="title">F1</span></span>&#123;</span><br><span class="line">    <span class="keyword">override</span>  <span class="keyword">val</span> a = <span class="number">2</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">getA</span> </span>= a</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">getF2A</span> </span>= a</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">val</span> f2 =<span class="keyword">new</span> <span class="type">F2</span></span><br><span class="line">  println(f2.getF1A) <span class="comment">// 2 因为F1的a()被F2的a()重载</span></span><br><span class="line">  println(f2.getF2A) <span class="comment">// 2</span></span><br><span class="line">  println(f2.getA) <span class="comment">// 2</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">val</span> f1: <span class="type">F1</span> = <span class="keyword">new</span> <span class="type">F2</span></span><br><span class="line">  println(f1.getF1A) <span class="comment">// 2 因为F1的a()被F2的a()重载</span></span><br><span class="line">  println(f1.getA) <span class="comment">// 2</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>经过jad反编译后的Scala代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">F1</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> a = <span class="number">1</span>;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">a</span><span class="params">()</span> </span>&#123;<span class="keyword">return</span> a;&#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getA</span><span class="params">()</span> </span>&#123;<span class="keyword">return</span> a();&#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getF1A</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> a();&#125;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> a = <span class="number">1</span>;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">F1</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">F2</span> <span class="keyword">extends</span> <span class="title">F1</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> a = <span class="number">2</span>;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">a</span><span class="params">()</span> </span>&#123;<span class="keyword">return</span> a;&#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getA</span><span class="params">()</span> </span>&#123;<span class="keyword">return</span> a();&#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getF2A</span><span class="params">()</span> </span>&#123;<span class="keyword">return</span> a();&#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">F2</span><span class="params">()</span></span>&#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/01/20180601/" data-id="ckmuaon45001cjhnugzth0lxf" data-title="20180601" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/01/20180601/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180531" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/31/20180531/" class="article-date">
+  <time class="dt-published" datetime="2018-05-31T14:40:05.000Z" itemprop="datePublished">2018-05-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/31/20180531/">20180531 parallel collection and _ </a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>par.foreach 是无序的，但是par.reduce/fold等结果是有序的</li>
+<li>改变并行度：<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> p = <span class="number">1.</span>to(<span class="number">10</span>).par</span><br><span class="line">p.tasksupport = <span class="keyword">new</span> <span class="type">ForkJoinTaskSupport</span>(<span class="keyword">new</span> <span class="type">ForkJoinPool</span>(<span class="number">10</span>))</span><br></pre></td></tr></table></figure></li>
+<li>Future改变默认线程池：<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> pool = <span class="type">Executors</span>.newFixedThreadPool(<span class="number">10</span>)</span><br><span class="line"><span class="keyword">implicit</span> <span class="keyword">val</span> ec = <span class="type">ExecutionContext</span>.fromExecutor(pool)</span><br></pre></td></tr></table></figure></li>
+<li><code>_</code> 不仅可以用在方法参数中，也可以用在定义函数变量上，如<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> f1 = (a: <span class="type">Int</span>, b: <span class="type">Int</span>) =&gt; a + b</span><br><span class="line"><span class="keyword">val</span> f2 = (_: <span class="type">Int</span>) + (_: <span class="type">Int</span>)</span><br></pre></td></tr></table></figure></li>
+<li><code>_</code> 放在方法名后面，将创建一个 partially applied function，此时 <code>_</code> 代表该方法的整个参数列表，如<code>println _</code>；其实更普通的用法，或者说partially体现在：<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f</span></span>(a: <span class="type">Int</span>, b: <span class="type">Int</span>) = a + b</span><br><span class="line"><span class="keyword">val</span> partialF = f(<span class="number">1</span>, _:<span class="type">Int</span>)</span><br></pre></td></tr></table></figure>
+当整个参数列表都省略了，就可以只在后面添加 <code>_</code><br>在需要一个函数变量的位置，可以省略掉最后的 <code>_</code>，比如 <code>Array(1,2,3).map(println)</code></li>
+<li>Scala的闭包方法会根据外面引入值的变化而变化，但Java中不允许修改引入的值，如<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> a = <span class="number">1</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f</span></span>(b:<span class="type">Int</span>) = a+b</span><br><span class="line">println(f(<span class="number">1</span>)) <span class="comment">// 2</span></span><br><span class="line">a = <span class="number">2</span></span><br><span class="line">println(f(<span class="number">1</span>)) <span class="comment">// 3</span></span><br></pre></td></tr></table></figure></li>
+<li>Scala编译器会对尾递归进行优化，不会生成多个调用栈，但Java不会优化</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/31/20180531/" data-id="ckmuaon440019jhnuhqz1feto" data-title="20180531 parallel collection and _ " class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/31/20180531/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180530" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/30/20180530/" class="article-date">
+  <time class="dt-published" datetime="2018-05-30T14:40:05.000Z" itemprop="datePublished">2018-05-30</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/30/20180530/">20180530</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li><p>Spark SQL 中用Scala对Row中Column进行修改，可以先写一个udf，然后用udf.apply。（20180607: 其实并不用udf，见代码部分）</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">transform</span></span>(a:<span class="type">A</span>, b:<span class="type">B</span>):<span class="type">T</span> = ???</span><br><span class="line">ds.withColumn(<span class="string">&quot;name&quot;</span>, udf(transform _).apply($<span class="string">&quot;colA&quot;</span>, $<span class="string">&quot;colB&quot;</span>)</span><br><span class="line"><span class="comment">// 或者</span></span><br><span class="line"><span class="comment">// val transform = (a:A, b:B) =&gt; ???</span></span><br><span class="line"><span class="comment">// ds.withColumn(&quot;name&quot;, udf(transform).apply($&quot;colA&quot;, $&quot;colB&quot;)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 20180607 更新</span></span><br><span class="line">ds.withColumn(<span class="string">&quot;name&quot;</span>, udf(transform)($<span class="string">&quot;colA&quot;</span>, $<span class="string">&quot;colB&quot;</span>) <span class="comment">// wrong</span></span><br><span class="line"><span class="comment">// 注意上面由于udf是一个currying方法，第二个参数表是implicit的，所以第二个括号不能是Column对象，必须使用apply方法</span></span><br><span class="line"><span class="comment">// 要对Column修改，除了写通用的类型转换方法，比如 String=&gt;String，可以直接写 Column=&gt;Column 方法，这样就免去了转udf的过程，如：</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>(col:<span class="type">Column</span>): <span class="type">Column</span> = col.doSomeThing</span><br><span class="line">ds.withColumn(<span class="string">&quot;name&quot;</span>, foo(<span class="symbol">&#x27;colA</span>))</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>通过coalesce(n)后保存文件，最终的文件数可能小于n</p>
+</li>
+<li>Scala Symbol 用于表示这个String并不是单纯的字符串，而是有其它含义，比如变量名、方法名等，在引入spark.implicits._后，Symbol可以被隐式转换为Column，<code>&#39;colA</code> 比 <code>$&quot;colA&quot;</code> 更加清晰；当然另一个好处就是String被interned，equal比较更快</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/30/20180530/" data-id="ckmuaon420014jhnu678ff6ar" data-title="20180530" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/30/20180530/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+
+
+  <nav id="page-nav">
+    
+    <a class="extend prev" rel="prev" href="/page/4/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/3/">3</a><a class="page-number" href="/page/4/">4</a><span class="page-number current">5</span><a class="page-number" href="/page/6/">6</a><a class="page-number" href="/page/7/">7</a><a class="extend next" rel="next" href="/page/6/">Next &raquo;</a>
+  </nav>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Airflow/" rel="tag">Airflow</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Python/" rel="tag">Python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 10px;">Airflow</a> <a href="/tags/Java/" style="font-size: 15px;">Java</a> <a href="/tags/Python/" style="font-size: 10px;">Python</a> <a href="/tags/Scala/" style="font-size: 17.5px;">Scala</a> <a href="/tags/Shell/" style="font-size: 12.5px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">March 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">April 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/03/29/20210329-write-orc-in-pojo/">20210329 Write ORC in POJO</a>
+          </li>
+        
+          <li>
+            <a href="/2020/04/11/20200411-collectd-to-influxdb-data-format/">20200411 collectd to InfluxDB data format</a>
+          </li>
+        
+          <li>
+            <a href="/2020/02/29/20200229-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%80%BB%E7%BB%93/">20200229 性能优化总结</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/04/20190504-Spark-ShuffleManager/">20190504 Spark ShuffleManager</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/20190503-Spark-Broadcast-%E5%8E%9F%E7%90%86/">20190503 Spark Broadcast 原理</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2021 Zhang Zhen<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.async = true;
+    dsq.src = 'https://' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
