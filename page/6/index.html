@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="PerfectDay20&#39;s Blog">
+<meta property="og:url" content="http://perfectday20.me/page/6/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:locale">
+<meta property="article:author" content="Zhang Zhen">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20's Blog" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main">
+  
+    <article id="single-20180531" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/31/20180531/" class="article-date">
+  <time class="dt-published" datetime="2018-05-31T14:40:05.000Z" itemprop="datePublished">2018-05-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/31/20180531/">20180531 parallel collection and _ </a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>par.foreach 是无序的，但是par.reduce/fold等结果是有序的</li>
+<li>改变并行度：<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> p = <span class="number">1.</span>to(<span class="number">10</span>).par</span><br><span class="line">p.tasksupport = <span class="keyword">new</span> <span class="type">ForkJoinTaskSupport</span>(<span class="keyword">new</span> <span class="type">ForkJoinPool</span>(<span class="number">10</span>))</span><br></pre></td></tr></table></figure></li>
+<li>Future改变默认线程池：<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> pool = <span class="type">Executors</span>.newFixedThreadPool(<span class="number">10</span>)</span><br><span class="line"><span class="keyword">implicit</span> <span class="keyword">val</span> ec = <span class="type">ExecutionContext</span>.fromExecutor(pool)</span><br></pre></td></tr></table></figure></li>
+<li><code>_</code> 不仅可以用在方法参数中，也可以用在定义函数变量上，如<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> f1 = (a: <span class="type">Int</span>, b: <span class="type">Int</span>) =&gt; a + b</span><br><span class="line"><span class="keyword">val</span> f2 = (_: <span class="type">Int</span>) + (_: <span class="type">Int</span>)</span><br></pre></td></tr></table></figure></li>
+<li><code>_</code> 放在方法名后面，将创建一个 partially applied function，此时 <code>_</code> 代表该方法的整个参数列表，如<code>println _</code>；其实更普通的用法，或者说partially体现在：<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f</span></span>(a: <span class="type">Int</span>, b: <span class="type">Int</span>) = a + b</span><br><span class="line"><span class="keyword">val</span> partialF = f(<span class="number">1</span>, _:<span class="type">Int</span>)</span><br></pre></td></tr></table></figure>
+当整个参数列表都省略了，就可以只在后面添加 <code>_</code><br>在需要一个函数变量的位置，可以省略掉最后的 <code>_</code>，比如 <code>Array(1,2,3).map(println)</code></li>
+<li>Scala的闭包方法会根据外面引入值的变化而变化，但Java中不允许修改引入的值，如<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> a = <span class="number">1</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f</span></span>(b:<span class="type">Int</span>) = a+b</span><br><span class="line">println(f(<span class="number">1</span>)) <span class="comment">// 2</span></span><br><span class="line">a = <span class="number">2</span></span><br><span class="line">println(f(<span class="number">1</span>)) <span class="comment">// 3</span></span><br></pre></td></tr></table></figure></li>
+<li>Scala编译器会对尾递归进行优化，不会生成多个调用栈，但Java不会优化</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/31/20180531/" data-id="ckmuaon440019jhnuhqz1feto" data-title="20180531 parallel collection and _ " class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/31/20180531/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180530" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/30/20180530/" class="article-date">
+  <time class="dt-published" datetime="2018-05-30T14:40:05.000Z" itemprop="datePublished">2018-05-30</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/30/20180530/">20180530</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li><p>Spark SQL 中用Scala对Row中Column进行修改，可以先写一个udf，然后用udf.apply。（20180607: 其实并不用udf，见代码部分）</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">transform</span></span>(a:<span class="type">A</span>, b:<span class="type">B</span>):<span class="type">T</span> = ???</span><br><span class="line">ds.withColumn(<span class="string">&quot;name&quot;</span>, udf(transform _).apply($<span class="string">&quot;colA&quot;</span>, $<span class="string">&quot;colB&quot;</span>)</span><br><span class="line"><span class="comment">// 或者</span></span><br><span class="line"><span class="comment">// val transform = (a:A, b:B) =&gt; ???</span></span><br><span class="line"><span class="comment">// ds.withColumn(&quot;name&quot;, udf(transform).apply($&quot;colA&quot;, $&quot;colB&quot;)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 20180607 更新</span></span><br><span class="line">ds.withColumn(<span class="string">&quot;name&quot;</span>, udf(transform)($<span class="string">&quot;colA&quot;</span>, $<span class="string">&quot;colB&quot;</span>) <span class="comment">// wrong</span></span><br><span class="line"><span class="comment">// 注意上面由于udf是一个currying方法，第二个参数表是implicit的，所以第二个括号不能是Column对象，必须使用apply方法</span></span><br><span class="line"><span class="comment">// 要对Column修改，除了写通用的类型转换方法，比如 String=&gt;String，可以直接写 Column=&gt;Column 方法，这样就免去了转udf的过程，如：</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>(col:<span class="type">Column</span>): <span class="type">Column</span> = col.doSomeThing</span><br><span class="line">ds.withColumn(<span class="string">&quot;name&quot;</span>, foo(<span class="symbol">&#x27;colA</span>))</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>通过coalesce(n)后保存文件，最终的文件数可能小于n</p>
+</li>
+<li>Scala Symbol 用于表示这个String并不是单纯的字符串，而是有其它含义，比如变量名、方法名等，在引入spark.implicits._后，Symbol可以被隐式转换为Column，<code>&#39;colA</code> 比 <code>$&quot;colA&quot;</code> 更加清晰；当然另一个好处就是String被interned，equal比较更快</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/30/20180530/" data-id="ckmuaon420014jhnu678ff6ar" data-title="20180530" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/30/20180530/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180529" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/29/20180529/" class="article-date">
+  <time class="dt-published" datetime="2018-05-29T14:40:05.000Z" itemprop="datePublished">2018-05-29</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/29/20180529/">20180529 implicit in Scala</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>implicit conversion 格式进化<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 原来需要写一个class，然后加上一个implicit def作为转换，如</span></span><br><span class="line">  <span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Foo</span>(<span class="params">i:<span class="type">Int</span></span>)</span></span><br><span class="line"><span class="class">  <span class="title">implicit</span> <span class="title">def</span> <span class="title">toFoo</span>(<span class="params">i:<span class="type">Int</span></span>) </span>= <span class="type">Foo</span>(i)</span><br><span class="line"><span class="comment">// 后来进化到直接在类前机上implicit，则编译器自动生成转换方法，如</span></span><br><span class="line">  <span class="keyword">implicit</span> <span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Foo</span>(<span class="params">i:<span class="type">Int</span></span>)</span></span><br></pre></td></tr></table></figure></li>
+<li>implicit parameter 格式进化<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 原来需命名implicit参数，并在body中使用该变量名，如</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>[<span class="type">T</span>](a:<span class="type">T</span>)(<span class="keyword">implicit</span> ordering: <span class="type">Ordering</span>[<span class="type">T</span>])=&#123;</span><br><span class="line">    ordering.gt(???)</span><br><span class="line">  &#125;</span><br><span class="line"><span class="comment">// 2. 后来可以不用变量名，使用implicitly方法，如</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>[<span class="type">T</span>](a:<span class="type">T</span>)(<span class="keyword">implicit</span> ordering: <span class="type">Ordering</span>[<span class="type">T</span>])=&#123;</span><br><span class="line">    implicitly[<span class="type">Ordering</span>[<span class="type">T</span>]].gt(???)</span><br><span class="line">  &#125;</span><br><span class="line"><span class="comment">// 3. 最后进化到使用context bounds，不用添加implicit参数列表，如</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>[<span class="type">T</span>:<span class="type">Ordering</span>](a:<span class="type">T</span>)=&#123;</span><br><span class="line">    implicitly[<span class="type">Ordering</span>[<span class="type">T</span>]].gt(???)</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></li>
+<li>implicit conversion 和 implicit parameter 可以叠加使用，比如<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">small</span></span>[<span class="type">T</span>:<span class="type">Ordering</span>](t1: <span class="type">T</span>, t2:<span class="type">T</span>) = &#123;</span><br><span class="line">    <span class="keyword">import</span> <span class="type">Ordered</span>._</span><br><span class="line">    <span class="keyword">if</span> (t1 &lt; t2) t1 <span class="keyword">else</span> t2</span><br><span class="line">  &#125;</span><br><span class="line"><span class="comment">// 这里又一个隐式变量: Ordering[T]，然后Ordered trait中有一个orderingToOrdered方法接受这个隐式变量，将t1转换为Ordered对象，就拥有了&#x27;&lt;&#x27;这个方法</span></span><br></pre></td></tr></table></figure></li>
+<li>隐式转换只能被编译器使用一次，但是int -&gt; double这种数字类型转换和子类当作父类使用这种转换其实是属于 Weak Conformance，所以和隐式转换可以叠加使用，比如<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span>(<span class="params">val i: <span class="type">Int</span></span>)</span></span><br><span class="line"><span class="class"><span class="title">case</span> <span class="title">class</span> <span class="title">B</span>(<span class="params">j: <span class="type">Int</span></span>) <span class="keyword">extends</span> <span class="title">A</span>(<span class="params">j</span>)</span></span><br><span class="line"><span class="class"><span class="title">case</span> <span class="title">class</span> <span class="title">C</span>(<span class="params">k: <span class="type">Int</span></span>) </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">foo</span></span>(c: <span class="type">C</span>) = <span class="number">1</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">implicit</span> <span class="function"><span class="keyword">def</span> <span class="title">aToC</span></span>(a: <span class="type">A</span>) = <span class="type">C</span>(a.i)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> b = <span class="type">B</span>(<span class="number">1</span>)</span><br><span class="line"><span class="keyword">val</span> c = <span class="type">C</span>(<span class="number">2</span>)</span><br><span class="line"><span class="comment">// 这里b是B类型，当时可以作为父类A使用，被通过aToC隐式转换为C</span></span><br><span class="line">c.foo(b)</span><br><span class="line">b.foo(c)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h2><ol>
+<li>IntelliJ IDEA Command+Shift+P show implicit parameter, 分析方法用的是哪个参数</li>
+<li>implicit 放在val前，可以被隐式导入</li>
+<li>放在方法的参数前，导入隐式变量</li>
+<li>放在类前，生成隐式转换方法</li>
+<li>放在方法前，隐式转换方法</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/29/20180529/" data-id="ckmuaon430017jhnu21albz5j" data-title="20180529 implicit in Scala" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/29/20180529/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180528" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/28/20180528/" class="article-date">
+  <time class="dt-published" datetime="2018-05-28T14:40:05.000Z" itemprop="datePublished">2018-05-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/28/20180528/">20180528</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>except 直接返回 distinct 的结果，不用在前后distinct; except all 暂不支持; dataset.union 是union all，但sql string中的union和union all全部支持</li>
+<li>导入 <code>spark.implicits._</code> 可以使用 <code>$&quot;name&quot;</code> 来通过列名选取列，是因为导入了一个自定义的 String Interpolator，将字符串交给<code>s String Interpolator</code>处理，然后生成新的ColumnName对象，而ColumnName类继承了Column类     </li>
+<li>同理，<code>Seq(1, 2, 3).toDS()</code> 这种创建Dataset的方式也是通过导入 spark.implicits._，然后将Seq隐式转换成DatasetHolder，然后调用其toDS方法实现的<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Converts $&quot;col name&quot; into a [[Column]].</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * @since 2.0.0</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">implicit</span> <span class="class"><span class="keyword">class</span> <span class="title">StringToColumn</span>(<span class="params">val sc: <span class="type">StringContext</span></span>) </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">$</span></span>(args: <span class="type">Any</span>*): <span class="type">ColumnName</span> = &#123;</span><br><span class="line">    <span class="keyword">new</span> <span class="type">ColumnName</span>(sc.s(args: _*))</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/28/20180528/" data-id="ckmuaon410012jhnu5yb52k3w" data-title="20180528" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/28/20180528/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180526" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/26/20180526/" class="article-date">
+  <time class="dt-published" datetime="2018-05-26T14:40:05.000Z" itemprop="datePublished">2018-05-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/26/20180526/">20180526 Early Definition</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Creature</span></span>&#123;</span><br><span class="line">  <span class="keyword">val</span> range: <span class="type">Int</span> = <span class="number">10</span></span><br><span class="line">  <span class="keyword">val</span> env: <span class="type">Array</span>[<span class="type">Int</span>] = <span class="keyword">new</span> <span class="type">Array</span>[<span class="type">Int</span>](range)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Ant</span> <span class="keyword">extends</span> <span class="title">Creature</span></span>&#123;</span><br><span class="line">  <span class="keyword">override</span> <span class="keyword">val</span> range: <span class="type">Int</span> = <span class="number">2</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>当子类覆盖父类的val且该val用于初始化父类时，会因为初始化顺序的不同产生问题。<br>比如上面这个例子，目的是为了让Ant的env长度为2，但是初始化的顺序是：</p>
+<ol>
+<li>父类range设为10，生成getter和setter</li>
+<li>初始化env，调用range的getter，因为被子类覆盖，调用子类的range getter</li>
+<li>由于子类range未初始化，值为0，getter返回0，则父类的env长度初始化为0</li>
+<li>初始化子类range为2</li>
+</ol>
+<p>这样在生成Ant实例时，env长度就变为了0<br>和下面的Java代码效果相同：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Creature</span></span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> range = <span class="number">10</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span>[] env = <span class="keyword">new</span> <span class="keyword">int</span>[getRange()];</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getRange</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> range;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">int</span>[] getEnv() &#123;</span><br><span class="line">        <span class="keyword">return</span> env;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Ant</span> <span class="keyword">extends</span> <span class="title">Creature</span></span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> range = <span class="number">2</span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getRange</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> range;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><br>简单来说就是父类初始化调用了被子类覆盖的方法，而该方法又使用了子类中还未初始化的变量。<br>解决方案：</p>
+<ol>
+<li>final val，不允许覆盖</li>
+<li>lazy val，但效率低</li>
+<li>early definition syntax：<code>class Ant extends&#123;override val range = 2&#125; with Creature</code>（由于trait没有构造参数，所以该语法经常用于覆盖父trait中的域，如<code>class A extends &#123;override val f = 1&#125; with B</code>）</li>
+</ol>
+<p>参考：Scala for the Impatient 2nd Edition, p99</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/26/20180526/" data-id="ckmuaon40000zjhnu4i2f59z9" data-title="20180526 Early Definition" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/26/20180526/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180525" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/25/20180525/" class="article-date">
+  <time class="dt-published" datetime="2018-05-25T14:40:05.000Z" itemprop="datePublished">2018-05-25</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/25/20180525/">20180525 使 bash 遇错停止</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h2 id="收获"><a href="#收获" class="headerlink" title="收获"></a>收获</h2><p>在shell脚本中执行多个任务，希望前面任务失败时立即停止，且不想每个任务后都添加判断，可以使用<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> doit &#123;</span><br><span class="line">    <span class="string">&quot;<span class="variable">$@</span>&quot;</span></span><br><span class="line">    <span class="built_in">local</span> status=$?</span><br><span class="line">    <span class="keyword">if</span> [[ <span class="variable">$&#123;status&#125;</span> -ne 0 ]]; <span class="keyword">then</span></span><br><span class="line">      <span class="built_in">echo</span> <span class="string">&quot;exec <span class="variable">$@</span> failed&quot;</span></span><br><span class="line">      <span class="built_in">exit</span> <span class="variable">$&#123;status&#125;</span></span><br><span class="line">    <span class="keyword">fi</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 如果不需要输出解释信息可以直接使用</span></span><br><span class="line"><span class="built_in">set</span> -e</span><br><span class="line"></span><br></pre></td></tr></table></figure><br><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/5195607/checking-bash-exit-status-of-several-commands-efficiently">参考链接</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/25/20180525/" data-id="ckmuaon3z000xjhnudlbr6boy" data-title="20180525 使 bash 遇错停止" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/25/20180525/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180524" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/24/20180524/" class="article-date">
+  <time class="dt-published" datetime="2018-05-24T14:40:05.000Z" itemprop="datePublished">2018-05-24</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/24/20180524/">20180524 读取嵌套Parquet类型</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h2 id="收获"><a href="#收获" class="headerlink" title="收获"></a>收获</h2><ol>
+<li>比如在Spark中用printSchema看到的数据结构为包含map的array，用Java读取的时候，这些类型其实都是Scala中的，所以不能直接使用Java中的List、Map等；WrappedArray也可用Seq代替<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">WrappedArray&lt;scala.collection.Map&lt;String, String&gt;&gt; es = row.getAs(<span class="string">&quot;colName&quot;</span>);</span><br><span class="line"><span class="keyword">for</span> (Map&lt;String, String&gt; map : JavaConverters.seqAsJavaListConverter(es).asJava()) &#123;</span><br><span class="line">   <span class="comment">// do somthing to Java map</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/24/20180524/" data-id="ckmuaon3y000sjhnu745xc1u6" data-title="20180524 读取嵌套Parquet类型" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/24/20180524/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180523" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/23/20180523/" class="article-date">
+  <time class="dt-published" datetime="2018-05-23T14:40:05.000Z" itemprop="datePublished">2018-05-23</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/23/20180523/">20180523 Spark 写文件冲突</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h2 id="收获"><a href="#收获" class="headerlink" title="收获"></a>收获</h2><ol>
+<li>两个spark任务向同一个目录中写文件，会造成冲突，导致任务失败；而采用之前多线程的方式，向一个父路径中利用partitionBy写文件，会导致文件结果缺失。这两个问题都是由于多个任务同时使用在父目录下的_temporary，造成冲突。<ol>
+<li>目前的解决办法是每个任务写在自己的分区中</li>
+<li>但这样在最后要保存时，使用select和partitionBy的时候就不能加入第一个分区列名</li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/38964736/multiple-spark-jobs-appending-parquet-data-to-same-base-path-with-partitioning">参考链接</a></li>
+</ol>
+</li>
+<li>parquet格式增加值完全相同的列，对文件体积影响小于百分之一，可忽略不计；例如是否按多个字段分区对体积无影响</li>
+<li>不能overwrite写到source路径中，因为开始执行的时候，source就被清空导致无法读取数据；和hive不同</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/23/20180523/" data-id="ckmuaon3x000qjhnu6d2m2s00" data-title="20180523 Spark 写文件冲突" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/23/20180523/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180522" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/22/20180522/" class="article-date">
+  <time class="dt-published" datetime="2018-05-22T14:40:05.000Z" itemprop="datePublished">2018-05-22</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/22/20180522/">20180522 Spark与多线程</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h2 id="收获"><a href="#收获" class="headerlink" title="收获"></a>收获</h2><ol>
+<li><p>在spark driver中也可以使用thread pool来并行处理</p>
+<ol>
+<li>因为spark是并行处理数据的，所以在使用spark的时候就很容易忘掉java本身的多线程；两者结合，在一些数据稍微倾斜的stage的最后一个task，和在保存文件需要长时间运行时，其它并行的task可以获得计算资源。在处理大量重复数据时很有效，比如连续处理100天的数据，则可以开一个fixedThreadPool来处理，比手动分隔日期启动多个spark任务要方便</li>
+<li>缺点就是spark UI中任务很乱，不便于分析，所以适用于已经经过优化后的程序 </li>
+<li>直接点击spark UI中的kill也不会kill掉整个任务，因为不断会有新线程生成</li>
+<li><a target="_blank" rel="noopener" href="http://blog.cloudera.com/blog/2015/05/working-with-apache-spark-or-how-i-learned-to-stop-worrying-and-love-the-shuffle/">参考链接</a></li>
+</ol>
+</li>
+<li><p>join-&gt;sortWithPartitions-&gt;coalesce(5).write() 导致join只发生在5个节点</p>
+</li>
+<li>join-&gt;repartition(200)-&gt;sortWithPartitions-&gt;coalesce(5).write() 导致join发生在默认设置的spark.sql.shuffle.partitions的997个节点，奇怪</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/22/20180522/" data-id="ckmuaon3z000vjhnu2vt0f8cr" data-title="20180522 Spark与多线程" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/22/20180522/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/" rel="tag">Java</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="single-20180521" class="h-entry article article-type-single" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/05/21/20180521/" class="article-date">
+  <time class="dt-published" datetime="2018-05-21T14:40:05.000Z" itemprop="datePublished">2018-05-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2018/05/21/20180521/">20180521 shuffle</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h2 id="收获"><a href="#收获" class="headerlink" title="收获"></a>收获</h2><ol>
+<li>Generators are not supported when it’s nested in expressions, explode 外不能嵌套函数，比如在SQL中使用<code>split(explode(row), &#39;_&#39;)</code></li>
+<li>shuffle操作耗时，除了因为网络传输外，还因为要写入磁盘</li>
+<li>要减少shuffle耗时<br>a. 减少shuffle的数据量，在本地先进行处理<br>b. 减少创建不必要的对象，比如输入输出类型不一样时，不要将所有输入对象都转成输出对象，然后reduceByKey，而要使用aggregateByKey等操作；比如<code>&lt;A, B&gt; -&gt; &lt;A, Set&lt;B&gt;&gt; -&gt; reduceByKey</code>，创建了大量set对象<br>c. 警惕逆向操作，比如先flatMap，join，然后又groupBy；可以用cogroup代替<br>d. 相同partitioner，相同分区数，可以减少一次shuffle</li>
+<li>生成stage边界的方法，一般都带有numPartitions参数，可以调节分区数；比如JavaRDD的groupBy，repartition，sortBy，substract；JavaPairRDD的aggregateByKey，cogroup，combineByKey，distinct，groupByKey，join，sortByKey，reduceByKey等</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/05/21/20180521/" data-id="ckmuaon3v000njhnua7enay71" data-title="20180521 shuffle" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/05/21/20180521/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/" rel="tag">Java</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+
+
+  <nav id="page-nav">
+    
+    <a class="extend prev" rel="prev" href="/page/5/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><a class="page-number" href="/page/5/">5</a><span class="page-number current">6</span><a class="page-number" href="/page/7/">7</a><a class="page-number" href="/page/8/">8</a><a class="extend next" rel="next" href="/page/7/">Next &raquo;</a>
+  </nav>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Airflow/" rel="tag">Airflow</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Book/" rel="tag">Book</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Python/" rel="tag">Python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 12px;">Airflow</a> <a href="/tags/Book/" style="font-size: 10px;">Book</a> <a href="/tags/Java/" style="font-size: 16px;">Java</a> <a href="/tags/Python/" style="font-size: 12px;">Python</a> <a href="/tags/Scala/" style="font-size: 18px;">Scala</a> <a href="/tags/Shell/" style="font-size: 14px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/05/">May 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">March 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">April 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/05/22/20210522-Summary-of-A-Philosophy-of-Software-Design/">20210522 Summary of A Philosophy of Software Design</a>
+          </li>
+        
+          <li>
+            <a href="/2021/03/30/20210330-A-modified-ClickHouse-Writer-for-DataX/">20210330 A Modified ClickHouse Writer for DataX</a>
+          </li>
+        
+          <li>
+            <a href="/2021/03/29/20210329-write-orc-in-pojo/">20210329 Write ORC in POJO</a>
+          </li>
+        
+          <li>
+            <a href="/2020/04/11/20200411-collectd-to-influxdb-data-format/">20200411 collectd to InfluxDB data format</a>
+          </li>
+        
+          <li>
+            <a href="/2020/02/29/20200229-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%80%BB%E7%BB%93/">20200229 性能优化总结</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2021 Zhang Zhen<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.async = true;
+    dsq.src = 'https://' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
