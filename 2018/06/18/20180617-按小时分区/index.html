@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>20180617 按小时分区 | PerfectDay20&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Spark中将数据按小时分区，且希望每个文件大小平均，基本思路是先统计出各个小时的条目数，然后根据输入的总文件个数，算出每小时应该有几个分区，然后将数据repartition到各个分区。而repartition有两种方法： 1. 在Dataset范围内操作给Dataset增加一个分区列，根据原来的hour列生成hour_partition列，比如一天数据需要100个分区，而20点这一小时计算出需要">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20180617 按小时分区">
+<meta property="og:url" content="http://perfectday20.me/2018/06/18/20180617-%E6%8C%89%E5%B0%8F%E6%97%B6%E5%88%86%E5%8C%BA/index.html">
+<meta property="og:site_name" content="PerfectDay20&#39;s Blog">
+<meta property="og:description" content="Spark中将数据按小时分区，且希望每个文件大小平均，基本思路是先统计出各个小时的条目数，然后根据输入的总文件个数，算出每小时应该有几个分区，然后将数据repartition到各个分区。而repartition有两种方法： 1. 在Dataset范围内操作给Dataset增加一个分区列，根据原来的hour列生成hour_partition列，比如一天数据需要100个分区，而20点这一小时计算出需要">
+<meta property="og:locale">
+<meta property="article:published_time" content="2018-06-18T13:24:35.000Z">
+<meta property="article:modified_time" content="2018-06-18T13:25:00.610Z">
+<meta property="article:author" content="Zhang Zhen">
+<meta property="article:tag" content="Spark">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="PerfectDay20's Blog" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">PerfectDay20&#39;s Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://perfectday20.me"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-20180617-按小时分区" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/06/18/20180617-%E6%8C%89%E5%B0%8F%E6%97%B6%E5%88%86%E5%8C%BA/" class="article-date">
+  <time class="dt-published" datetime="2018-06-18T13:24:35.000Z" itemprop="datePublished">2018-06-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      20180617 按小时分区
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>Spark中将数据按小时分区，且希望每个文件大小平均，基本思路是先统计出各个小时的条目数，然后根据输入的总文件个数，算出每小时应该有几个分区，然后将数据repartition到各个分区。而repartition有两种方法：</p>
+<h2 id="1-在Dataset范围内操作"><a href="#1-在Dataset范围内操作" class="headerlink" title="1. 在Dataset范围内操作"></a>1. 在Dataset范围内操作</h2><p>给Dataset增加一个分区列，根据原来的hour列生成hour_partition列，比如一天数据需要100个分区，而20点这一小时计算出需要5个分区，则hour=20的数据的新增hour_partition列的值为20_0,20_1 … 20_4 平均分，然后利用Dataset.repartition(100, ‘hour_partition)即可。</p>
+<p>但是这样操作会导致最终分区数少于设定值，因为Dataset.repartition是使用hash分区，虽然hour_partition列的这些值的hash一般不同，但是由于最后是对分区数求余，所以很容易出现一个分区包含多个小时的数据（这样不会影响最终文件数，但影响写入时间）和一个分区包含一个小时的不同hour_partition值的情况（这样会减少最终文件数，使得一个文件是其它文件的多倍大小）</p>
+<h2 id="2-转换为RDD操作"><a href="#2-转换为RDD操作" class="headerlink" title="2. 转换为RDD操作"></a>2. 转换为RDD操作</h2><p>由于Dataset的repartition无法使用自定义的Partitioner，所以可以先转换为RDD[hour_partition, Row]，然后使用 rdd.partitionBy(partitioner)，再转换回Dataset即可。这样最终文件数是与设定严格一致的。</p>
+<p>虽然进行了Dataset与RDD的互相转换，但与方法1的计算时间在误差范围内</p>
+<h3 id="其它"><a href="#其它" class="headerlink" title="其它"></a>其它</h3><ol>
+<li>第一步统计各小时条目数的时候，可以事先cache数据，防止多次读取</li>
+<li>计算小时与分区编号的映射，可以写一个长度等于总文件数的数组，然后填充00-24的值，这样就不用使用新增列用于分区，直接使用RDD[hour, Row]；也可以将hour与分区总数的映射转换为hour_partition与分区编号的映射，然后使用RDD[hour_partition, Row]，如<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">encode</span></span>(hour: <span class="type">String</span>, num: <span class="type">Int</span>) = <span class="string">s&quot;<span class="subst">$&#123;hour&#125;</span>_<span class="subst">$num</span>&quot;</span></span><br><span class="line"><span class="keyword">val</span> encodedHourToParNum: <span class="type">Map</span>[<span class="type">String</span>, <span class="type">Int</span>] = hourToNum.flatMap(t =&gt; <span class="keyword">for</span> (i &lt;- <span class="number">0</span> until t._2) <span class="keyword">yield</span> encode(t._1, i)).zipWithIndex.toMap</span><br><span class="line"><span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">getPartition</span></span>(key: <span class="type">Any</span>): <span class="type">Int</span> = &#123;</span><br><span class="line">    encodedHourToParNum(key.toString)</span><br><span class="line">  &#125;</span><br><span class="line"><span class="comment">// hourToNum(00-&gt;2, 01-&gt;2 ... ) =&gt; (00_0-&gt;0, 00_1-&gt;1, 01_0-&gt;2, 01_1-&gt;3 ... )</span></span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://perfectday20.me/2018/06/18/20180617-%E6%8C%89%E5%B0%8F%E6%97%B6%E5%88%86%E5%8C%BA/" data-id="ckmuaon4r002fjhnuftn395q0" data-title="20180617 按小时分区" class="article-share-link">Share</a>
+      
+        <a href="http://perfectday20.me/2018/06/18/20180617-%E6%8C%89%E5%B0%8F%E6%97%B6%E5%88%86%E5%8C%BA/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/06/19/20180618-%E9%98%BF%E9%87%8CJava%E5%BC%80%E5%8F%91%E6%89%8B%E5%86%8C/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          20180618 阿里Java开发手册
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/06/18/20180616/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">20180616</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a target="_blank" rel="noopener" href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Airflow/" rel="tag">Airflow</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Book/" rel="tag">Book</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Python/" rel="tag">Python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/" rel="tag">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Airflow/" style="font-size: 12px;">Airflow</a> <a href="/tags/Book/" style="font-size: 10px;">Book</a> <a href="/tags/Java/" style="font-size: 16px;">Java</a> <a href="/tags/Python/" style="font-size: 12px;">Python</a> <a href="/tags/Scala/" style="font-size: 18px;">Scala</a> <a href="/tags/Shell/" style="font-size: 14px;">Shell</a> <a href="/tags/Spark/" style="font-size: 20px;">Spark</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/07/">July 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/05/">May 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">March 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">April 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">December 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">August 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">June 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/07/17/20210717-Protobuf3-optional-and-wrapper/">20210717 Protobuf3 optional and wrapper</a>
+          </li>
+        
+          <li>
+            <a href="/2021/05/22/20210522-Summary-of-A-Philosophy-of-Software-Design/">20210522 Summary of A Philosophy of Software Design</a>
+          </li>
+        
+          <li>
+            <a href="/2021/03/30/20210330-A-modified-ClickHouse-Writer-for-DataX/">20210330 A Modified ClickHouse Writer for DataX</a>
+          </li>
+        
+          <li>
+            <a href="/2021/03/29/20210329-write-orc-in-pojo/">20210329 Write ORC in POJO</a>
+          </li>
+        
+          <li>
+            <a href="/2020/04/11/20200411-collectd-to-influxdb-data-format/">20200411 collectd to InfluxDB data format</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2021 Zhang Zhen<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+<script>
+  var disqus_shortname = 'pefectday20';
+  
+  var disqus_url = 'http://perfectday20.me/2018/06/18/20180617-%E6%8C%89%E5%B0%8F%E6%97%B6%E5%88%86%E5%8C%BA/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.async = true;
+    dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
