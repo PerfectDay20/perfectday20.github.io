@@ -1,0 +1,29 @@
+{% extends "index.html" %}
+
+{% block title %}{{ config.title }} | {{ page.title }}{% endblock title %}
+{% block description %}{{ page.description | default(value=config.description) }}{% endblock description %}
+
+{% block header %}
+<header class="space">
+    <a href="{{ config.base_url }}">&LeftArrow; Home</a>
+</header>
+{% endblock header %}
+
+{% block content %}
+<main>
+    <h1>{{ page.title }}</h1>
+    <p class="secondary">
+        {% if page.date %}
+        {{ page.date | date(format="%Y/%m/%d") }}
+        {% endif %}
+
+        {% if page.taxonomies.tags %}
+        {% for tag in page.taxonomies.tags %}
+        <a href="{{ get_taxonomy_url(kind="tags", name=tag) }}">#{{ tag }}</a>
+        {% endfor %}
+        {% endif %}
+    </p>
+    <div class="space"></div>
+    {{ page.content | safe }}
+</main>
+{% endblock content %}

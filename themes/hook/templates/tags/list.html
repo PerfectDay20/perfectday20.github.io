@@ -1,0 +1,20 @@
+{% extends "page.html" %}
+
+{% block title %}{{ config.title }} | Tags {% endblock title %}
+
+{% block content %}
+    <h1>Tags</h1>
+    <div>
+        <div>
+            {% for tag in terms %}
+            <p>
+                 <a href="{{ tag.permalink }}">
+                    {{ tag.name }}
+                    <span>{{ tag.pages | length }}</span>
+                </a>
+            </p>
+               
+            {% endfor %}
+        </div>
+    </div>
+{% endblock content %}

@@ -1,0 +1,24 @@
+
+{% extends "page.html" %}
+
+{% block title %}{{ config.title }} | {{ term.name }}{% endblock title %}
+
+{% block header %}
+<header class="space">
+    <a href="/tags">&LeftArrow; Tags</a>
+</header>
+{% endblock header %}
+
+{% block content %}
+    <div>
+        <h1>{{ term.name }}</h1>
+        {% for page in term.pages %}
+            <div>
+                <span>{{ page.date | date(format="%F") }}</span>
+                <span>
+                    <a href="{{ page.permalink }}">{{ page.title }}</a>
+                </span>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock content %}
