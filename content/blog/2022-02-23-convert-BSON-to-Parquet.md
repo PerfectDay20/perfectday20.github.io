@@ -4,9 +4,9 @@ title =  "Convert BSON to Parquet"
 tags = ["Spark"]
 +++
 
-MongoDB is an OLTP database, when using it as an OLAP for huge data, it’ll take a long time to finish the job. It’s not the MongoDB’s fault, because it's not what it is designed for. In this case, we want to make the data available in other OLAP, such as Hive, Presto, Athena.
+MongoDB is an OLTP database, when using it as an OLAP for huge data processing, it’ll take a long time to finish the job. It’s not the MongoDB’s fault, as it's not what it is designed for. In this case, we want to make the data available in other OLAP, such as Hive, Presto, Athena.
 
-MongoDB stores data in BSON, which is the binary representation of JSON, so typically it contains many nested structures. There are two choices for the modern columnar format, Parquet and ORC. Since Parquet uses Dremel algorithm to handle the nested structure, Parquet is the most suitable choice.
+MongoDB stores data in BSON, which is the binary representation of JSON, so typically it contains many nested structures. There are two choices for the modern columnar format, Parquet and ORC. Since Parquet uses Dremel algorithm to handle the nested structure, it's the most suitable choice.
 
 Parquet is deeply rooted in Hadoop ecosystem. Using other tools(like Hive, Spark) to create parquet files is simple.  But writing Parquet without Hadoop dependency is nearly impossible. Luckily there are some third format converters provided in their [Github Repository](https://github.com/apache/parquet-mr).
 

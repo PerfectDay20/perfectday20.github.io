@@ -4,21 +4,21 @@ title = "Comparison of Parquet and ORC"
 tags = ["Spark"]
 +++
 
-I'm using Spark3.2.1 to convert MongoDB Bson files to Parquet and ORC. To save the cost, I want to choose a best combination of data type + compression. Both the data file size and the data size scanned in queries should be small, because they will be saved in AWS S3 and queried in AWS Athena, which computes cost by data scanned.
+I'm using Spark3.2.1 to convert MongoDB BSON files to Parquet and ORC. To save the cost, I want to choose a best combination of data type + compression. Both the data file size and the data size scanned in queries should be small, because they will be saved in AWS S3 and queried in AWS Athena, which compute cost by data stored and scanned.
 
-Since Bson is binary Json, the data is highly nested. A sample would be:
+Since BSON is binary Json, the data is highly nested. A sample would be:
 
 ```json
 {
   "_id":{
     "a":1,
     "b":2,
-    ...
+    // ...,
   },
-  value:{
-    "c": ..,// Map<String, Long>
-    "d": ..,// Map<String, Map<String, Long>>
-    ... // hundreds of other columns
+  "value":{
+    "c": {},// Map<String, Long>
+    "d": {},// Map<String, Map<String, Long>>
+    // ... // hundreds of other columns
   }
 }
 ```
@@ -62,7 +62,7 @@ object OrcOptions {
 
 The difference is that Parquet provides gzip while ORC provides zlib. [A good article to explain gzip and zlib.](https://dev.to/biellls/compression-clearing-the-confusion-on-zip-gzip-zlib-and-deflate-15g1)
 
-LZO needs extra libraries so I didn't test it.
+LZO needs extra libraries so I didn't test it. Below table shows different file size ratios compared with the smallest combination zlib + ORC. All the compression configs are default, such as compression level.
 
 | **compression** | **Parquet** | **ORC** |
 | --------------- | ----------- | ------- |
@@ -77,19 +77,19 @@ LZO needs extra libraries so I didn't test it.
 
 # Processing time
 
-My app's logic is fairly simple, just parse and save. But ORC cost 3-4x times of Parquet. Maybe that's because of the way ORC handles nested columns. Or just simply because ORC wasn't optimized well enough compared to Parquet in Spark.
+My app's logic is fairly simple, just parse and save. But ORC cost 3-4x the time of Parquet. Maybe that's because of the way ORC handles nested columns, or just simply because ORC wasn't optimized well enough compared to Parquet in Spark.
 
 # Data scanned in queries
 
-[Parquet uses Dremel algorithm](https://parquet.apache.org/documentation/latest/) to flatten the nested columns, while [ORC just nests columns in columns](https://orc.apache.org/specification/ORCv1/). So when read from a inner column, Parquet only reads the columns needed, while ORC needs to decompress the full outer columns.
+[Parquet uses Dremel algorithm](https://parquet.apache.org/documentation/latest/) to flatten the nested columns, while [ORC just nests columns in columns](https://orc.apache.org/specification/ORCv1/). So when read from a inner column, Parquet only reads the columns needed, while ORC needs to decompress the outer columns fully.
 
 A simple query in Athena can reveal this:
 
 The files used in the test: Parquet=376MB, ORC=319MB
 
-| SQL                                                 | Parquet data scanned | ORC data scanned |
+| SQL                                                 | Parquet data scanned (MB) | ORC data scanned (MB) |
 | --------------------------------------------------- | -------------------- | ---------------- |
-| select sum(value.a) from table;                     | 1.6 MB               | 303.94 MB        |
+| select sum(value.a) from table;                     | 1.6               | 303.94        |
 | select sum(value.b) from table;                     | 6.11                 | 303.94           |
 | select sum(element_at(value.c, 'd').e) from table; | 97.14                | 303.94           |
 

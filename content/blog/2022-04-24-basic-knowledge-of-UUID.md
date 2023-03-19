@@ -18,12 +18,13 @@ Not all UUIDs are randomly created. Because it has so many bits, it can encode m
 
 Different bit length of some well-known protocols:
 
-| IPv4 | 32bit |
+| Protocol | length |
 | --- | --- |
-| IPv6 | 128bit = 16byte |
-| UUID | 128bit |
-| MD5 | 128bit |
-| SHA-1 | 160bit = 20byte |
+| IPv4 | 32 bit = 4 byte|
+| IPv6 | 128 bit = 16 byte |
+| UUID | 128 bit = 16 byte|
+| MD5 | 128 bit = 16 byte|
+| SHA-1 | 160 bit = 20 byte |
 
 One of the best part of this wiki is the explanation of collision: 
 
