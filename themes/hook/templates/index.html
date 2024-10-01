@@ -21,14 +21,15 @@
             &nbsp;&nbsp;
             {% endfor %}
 
+            <a href="blog">Archive</a>
+            &nbsp;&nbsp;  
+            <a href="tags">Tags</a>
+            &nbsp;&nbsp; 
+
             {% for page in linked_pages %}
             <a href="{{ page.permalink }}">{{ page.title }}</a>
             &nbsp;&nbsp;
             {% endfor %}
-
-            <a href="blog">Archive</a>
-            &nbsp;&nbsp;  
-            <a href="tags">Tags</a>
         </nav>
         {% endif %}
     </header>
