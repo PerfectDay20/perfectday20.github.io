@@ -1,0 +1,14 @@
+@use 'bamboo';
+
+body {
+    max-width: 120ch;
+}
+
+td {
+    width: 50%;
+}
+
+th {
+    width: 50%;
+    text-align: center;
+}
