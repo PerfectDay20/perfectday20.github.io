@@ -4,7 +4,7 @@ template = "page-compare-table.html"
 +++
 
 Most of the contents below are based on [A Guide to the Go Garbage Collector](https://go.dev/doc/gc-guide) of Go 1.23.  
-It has amazing visualizations to help readers understand how Go GC works, which I don't see in official Java docs.
+It has amazing visualizations to help readers understand how Go GC works.
 
 ---
 
