@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Basic knowledge of UUID</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Basic knowledge of UUID</h1>
+    <p class="secondary">
+        
+        2022&#x2F;04&#x2F;24
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <p>I have already seen “UUID” many times in many different places, like some file system info, network interface info. This time when I'm reading <a href="https://cassandra.apache.org/doc/latest/cassandra/cql/definitions.html">Cassandra’s doc</a>, this word comes again.</p>
+<p>Every time I see it I think it represents a unique ID, maybe just random created string with user defined length. This time with enough curiosity and time to find out what UUID really means, let’s dig in.</p>
+<p>The main resource is <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">Wikipedia</a>.</p>
+<p>As it turns out, UUID(universally unique Identifier) has strictly defined standard, just like IPv4. It’s 128 bit long, with format of <code>xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx</code>, <code>M</code> and <code>N</code> represent different versions and variants. For example, <code>123e4567-e89b-12d3-a456-426614174000</code>.</p>
+<p>Not all UUIDs are randomly created. Because it has so many bits, it can encode many different info to discriminate UUIDs created by different nodes to minimize the possibility of collision.</p>
+<ul>
+<li>Version1 is based on time and MAC address.</li>
+<li>Version4 is random created.</li>
+<li>Version3/5 are based on MD5/SHA-1.</li>
+</ul>
+<p>Different bit length of some well-known protocols:</p>
+<table><thead><tr><th>Protocol</th><th>length</th></tr></thead><tbody>
+<tr><td>IPv4</td><td>32 bit = 4 byte</td></tr>
+<tr><td>IPv6</td><td>128 bit = 16 byte</td></tr>
+<tr><td>UUID</td><td>128 bit = 16 byte</td></tr>
+<tr><td>MD5</td><td>128 bit = 16 byte</td></tr>
+<tr><td>SHA-1</td><td>160 bit = 20 byte</td></tr>
+</tbody></table>
+<p>One of the best part of this wiki is the explanation of collision:</p>
+<blockquote>
+<p>For example, the number of random version-4 UUIDs which need to be generated in order to have a 50% probability of at least one collision is 2.71 quintillion...
+This number is equivalent to generating 1 billion UUIDs per second for about 85 years. A file containing this many UUIDs, at 16 bytes per UUID, would be about 45 <a href="https://en.wikipedia.org/wiki/Exabyte">exabytes</a>.</p>
+</blockquote>
+<p>1 exabyte (EB) = 1000 PB</p>
+<p>This is much more intuitive than just giving a number.</p>
+<p>In JDK11, UUID class is implemented as 2 <code>long</code>. Use <code>UUID.randomUUID()</code> to create a version4 UUID, <code>UUID.nameUUIDFromBytes()</code> to create a version3 UUID.</p>
+
+</main>
+
+</body>
+</html>

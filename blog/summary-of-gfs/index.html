@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Summary of GFS</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Summary of GFS</h1>
+    <p class="secondary">
+        
+        2021&#x2F;12&#x2F;05
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <p>The different assumptions and technological environment of GFS with old distributed file system:</p>
+<ul>
+<li>component failures are common</li>
+<li>files are huge</li>
+<li>prefer append to in-place edit</li>
+<li>files are most read-only once written</li>
+<li>well-defined semantics for concurrent append to support producer-consumer queue</li>
+<li>prefer bandwidth to latency</li>
+</ul>
+<h1 id="components">Components</h1>
+<ul>
+<li>One master and several master replicas and shadow masters:
+<ul>
+<li>Single master makes design simpler, it has global information to make decisions. The communication between clients and master is minimized(only metadata, not file data), so master won't become the bottleneck</li>
+<li>shadow masters are used when master is down to support read-only access</li>
+<li>master replicas as backup if master can't be recovered</li>
+<li>master persists namespaces and file-to-chunk mapping, but doesn't persist chunk locations, getting them from heartbeat after startup. Because chunkserver changes(join/leave/restart/fail) are too often, request the data from chunkserver is simpler</li>
+</ul>
+</li>
+<li>Chunkservers to save data, serve reads and writes
+<ul>
+<li>The files in chunkservers is divided by chunk, each 64MB, the larger the chunk, the smaller the metadata</li>
+</ul>
+</li>
+</ul>
+<p>One interesting about GFS is it doesn't distinguish between normal and abnormal termination. So it's a <a href="https://en.wikipedia.org/wiki/Crash-only_software">crash-only software</a>.</p>
+<h1 id="read-write">Read/Write</h1>
+<p>When clients write data, it gets chunk locations(for example, server A, B, C) from master, then choose a closest chunkserver(let's say server A), chunkserver A receives the data, save it in the LRU buffer and transfer the data to a closest chunkserver B at the same time it receives the data. This pipeline is used to minimize the latency and maximizing the bandwidth. When all the 3 chunkservers receive the data, client sends a request to primary(for example server B, which gets a lease to become primary of this chunk from master), then primary will send a request with a consistent order for all the file data to all secondaries(A and C). After receiving the request, the file data is finally wrote into chunks.</p>
+<p>Data flow and control flow are decoupled for network efficiency.</p>
+<p>Concurrent writes may result in failures, GFS doesn't keep every chunk replica byte-wise identical, each chunk may have padding or duplicate data(when client appends fail, it'll retry, even though some chunkserver may already write them). The client API will handle padding, but leave the duplicates to client code.</p>
+<p>When clients read data, the chunk server will compare the in-memory checksums with the chunks to ensure data is not corrupted.</p>
+<h1 id="master-operation">Master operation</h1>
+<p>Master handles chunk location management, replicates replicas based on different priorities, rebalance chunks and garbage collection. When doing all these operations, master needs to consider chunkserver's disk utilization, network bandwidth and physical server distribution.</p>
+<p>The default behavior of file deletion is just to rename the file to another location, wait for 3 days then actually "deleted". This has many benefits:</p>
+<ul>
+<li>safety net for accidental deletion</li>
+<li>simpler and uniform deletion logic: failures in distributed cluster are common, active scan of orphan chunks is always needed even the system has direct deletion. So to simplify the design, just use active garbage collection(active scan) solely.</li>
+</ul>
+<p>The backwards of GC is slow reclamation of disk, then GFS provides a option to delete the file again to reclaim the storage immediately, and some different reclamation policies.</p>
+<h1 id="other-materials">Other materials</h1>
+<p><a href="http://nil.csail.mit.edu/6.824/2020/notes/l-gfs.txt">http://nil.csail.mit.edu/6.824/2020/notes/l-gfs.txt</a></p>
+<p><a href="https://queue.acm.org/detail.cfm?id=1594206">https://queue.acm.org/detail.cfm?id=1594206</a></p>
+<ul>
+<li>The design of single master simplify the system, help the system come on line in time, but finally become the bottleneck</li>
+<li>When you design both infrastructure and the apps on that, you can push the problems around and find the best accommodation</li>
+<li>Use a system in a way that's not designed for will be a pain. (Use GFS for latency sensitive apps)</li>
+</ul>
+<p><a href="https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system">https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system</a></p>
+<ul>
+<li>Colossus is the successor to GFS</li>
+<li>The metadata model is distributed, more scalable</li>
+<li>Colossus can support different use cases, make them scalable to exabytes of storage and tens of thousands of machines. Provision for peak demand of low latency workloads, and fill idle time with batch analytic tasks</li>
+<li>Build on many different storage hardware, provide different tiers by specifying I/O, availability and durability requirements</li>
+<li>Hot data in flash, aged data in disk</li>
+</ul>
+<p><a href="https://www.systutorials.com/colossus-successor-to-google-file-system-gfs/">https://www.systutorials.com/colossus-successor-to-google-file-system-gfs/</a></p>
+
+</main>
+
+</body>
+</html>

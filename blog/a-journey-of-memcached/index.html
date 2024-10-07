@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | A Journey of Memcached</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>A Journey of Memcached</h1>
+    <p class="secondary">
+        
+        2021&#x2F;08&#x2F;29
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <blockquote>
+<p>This is by no means a tutorial or comprehensive introduction to memcached, it's just what I learnt and felt about memcached along the learning journey.</p>
+</blockquote>
+<p>I didn't remember when I first encountered the memcached, but it certainly left me a great impression in <a href="http://boringtechnology.club/">http://boringtechnology.club/</a>, the author's story is fascinating. After reading that story for several years, I finally want to know more about memcached, just for curiousity.</p>
+<p>After reading through the <a href="https://github.com/memcached/memcached/wiki">official wiki</a>, I learnt something about memcached:</p>
+<p>It really is JUST a cache. No persistence, no replica, no communications among servers, the client chooses which server to set and get values.</p>
+<p>It fulfills Unix philosophy, do one thing and do it well.</p>
+<h1 id="about-the-protocols">About the protocols</h1>
+<p>The wiki is very old, so conflicts exist. The server client communication protocol is spread in a few pages:</p>
+<ul>
+<li><a href="https://github.com/memcached/memcached/wiki/Protocols">https://github.com/memcached/memcached/wiki/Protocols</a></li>
+<li><a href="https://github.com/memcached/memcached/blob/master/doc/protocol.txt">https://github.com/memcached/memcached/blob/master/doc/protocol.txt</a></li>
+<li><a href="https://github.com/memcached/memcached/wiki/BinaryProtocolRevamped">https://github.com/memcached/memcached/wiki/BinaryProtocolRevamped</a></li>
+<li><a href="https://github.com/memcached/memcached/wiki/ProtocolV3">https://github.com/memcached/memcached/wiki/ProtocolV3</a></li>
+<li><a href="https://github.com/memcached/memcached/wiki/MetaCommands">https://github.com/memcached/memcached/wiki/MetaCommands</a></li>
+</ul>
+<p>It has two kinds of protocols, text and binary. Text protocol is human friendly, it can be used in telnet, so we can easily try and debug, but text is always slower than binary, so we should use binary protocol in production, right?</p>
+<p>Guess again. The first link said "binary affords us many new abilities", but this page is last updated in 2016.  From 4th link MetaCommands wiki above, which updated within a month, it says "binary protocol is deprecated", and now we should use text protocol.</p>
+<p>The MetaCommands is not as human friendly as the old text protocol. In old text protocol, we can use <code>get</code> <code>set</code> <code>add</code> <code>append</code> , etc. But in MetaCommands, we use <code>mg</code> instead of <code>get</code>, <code>ms</code> instead of <code>set</code>, and many flags to control the behavior.</p>
+<h1 id="about-the-deployment">About the deployment</h1>
+<p>You can deploy it within the same machine of webserver, or dedicated servers, but don't do this in the database machine.</p>
+<p>Maybe because the simplicity of the server side, it's very easy to use the CLI, just type <code>memcached</code> and here we go. The command line options are very simple too, like:</p>
+<ul>
+<li>-m: memory MB</li>
+<li>-d: daemon</li>
+<li>-v: verbose, type multiple times to get more information</li>
+<li>-p: port</li>
+</ul>
+<h1 id="performance-and-internal">Performance and Internal</h1>
+<p>Performance may be the most important reason to decide whether to use memcached. They have a <a href="https://github.com/memcached/memcached/wiki/Performance">page</a> to explain it in detail.</p>
+<p>The internal of memcached is <a href="https://github.com/memcached/memcached/wiki/UserInternals">here</a>, memcached divide RAM into different parts, they call them slabs. Each slab is further divided into chunks, a chunk's size is not changed after created. When saving data, the server will find a nearest fit chunk, and there will be overhead. For example, there are 3 size of chunks, 80, 104 ,136 bytes, then to save an item(key + misc data + value) of 106 bytes, we need a chunk of 136 bytes, and the overhead is 30 bytes.</p>
+<p>Just like the load factor in Java's HashMap, there is a growth factor <code>-f</code> to control the different chunk size level.</p>
+<h1 id="tutorial">Tutorial</h1>
+<p>MySQL official doc even has a <a href="https://dev.mysql.com/doc/refman/5.6/en/ha-memcached.html">tutorial</a> for memcached! Maybe the best one even it's a little old.</p>
+<p>Very useful, detailed command line examples, like how to use Unix socket instead of network ports, page, chunk, growth factor, scenario of wasting memory and how to improve it.</p>
+<p>If I need to use memcached in future, I'll definitely  read this tutorial again.</p>
+<p><a href="https://lzone.de/cheat-sheet/memcached">Cheatsheet</a></p>
+<h1 id="client-library">Client Library</h1>
+<p>Next, let's check the client library. Since I mainly use Java, I searched key word "<a href="https://mvnrepository.com/search?q=memcached">memcached</a>" in maven central, the result is so poor, some results are too old, other results just don't look like a client library. Is this because memcached it too matured, or no one in Java world use memcached? After some searches in Google, finally I found <a href="https://mvnrepository.com/artifact/net.spy/spymemcached">one promising</a>, last updated May, 2017.</p>
+<p>Because the server only handle cache, the clients need to take care of all other stuffs, like choosing servers, encode and decode, consistent hashing and so on.</p>
+<p>A simple way to locate the target server node by key is using mod, which is implemented in <code>ArrayModNodeLocator</code>, the core part is <code>int rv = (int) (hashAlg.hash(key) % nodes.length);</code></p>
+<p>Another way is Ketama, the blog link in the source file is outdated, the available one is <a href="https://www.last.fm/user/RJ/journal/2007/04/10/rz_libketama_-_a_consistent_hashing_algo_for_memcache_clients">here</a>, and the repository is <a href="https://github.com/RJ/ketama">here</a>. Ketama is a ring hash, when setup, put many virtual nodes on the ring, then to get the node of a key, hash the key and find the next node on the ring. This implementation uses a <code>TreeMap</code> to store and find the nodes, and supports node weights (though the javadocs says not).</p>
+<p>For default serializer, the compression threshold is 16KB, beyond this the data will be gzipped.</p>
+<p>For consistent hashing , this is a good <a href="https://dgryski.medium.com/consistent-hashing-algorithmic-tradeoffs-ef6b8e2fcae8">article</a>. There are so many different algorithms, each with their own trade offs.</p>
+<h1 id="cloud-services">Cloud Services</h1>
+<p>Many cloud providers have memcached as a service.</p>
+<h2 id="aws">AWS</h2>
+<p>AWS has ElastiCache for Memcached, and even writes <a href="https://aws.amazon.com/elasticache/redis-vs-memcached/">a good comparison with Redis</a>.</p>
+<p>AWS adds auto discovery to its service, clients can get the updates by a special key(<code>AmazonElastiCache:cluster</code>) or <code>config</code> command depends on your deployed version.</p>
+<p>So AWS provides memcached as a service, what about the client library, did they write a new one? Unfortunately no, they modified the net.spy library above, and added other functions like auto discovery. See <a href="https://docs.aws.amazon.com/AmazonElastiCache/latest/mem-ug/AutoDiscovery.Using.ModifyApp.Java.html">this</a> and <a href="https://github.com/awslabs/aws-elasticache-cluster-client-memcached-for-java">this</a>.</p>
+<h2 id="google">Google</h2>
+<p>Google has Memorystore for Memcached, it also adds auto discovery. So can we say lack of auto discovery is the pain point of the memcached?</p>
+<p>For the golang <a href="https://github.com/google/gomemcache">client library</a>, they forked <a href="https://github.com/bradfitz/gomemcache">a open source one</a>, and added auto discovery. For Java, I don't find any clue in the doc. Interesting as they say "The Auto Discovery service is also compatible with most clients supporting AWS Elasticache auto discovery". So the auto discovery protocol is same with AWS? The data part of AWS auto discovery protocol is <code>hostname|ip-address|port</code>, but Google has <code>node1-ip|node1-ip|node1-port</code>, the first part is not same.</p>
+<p>Another difference is Google warns this, but AWS doesn't:</p>
+<blockquote>
+<p>You should use the Auto Discovery endpoint for its intended purpose, and not to run Memcached commands such as get, set, and delete.</p>
+</blockquote>
+<p>From doc, it looks like Google uses one dedicate server to store cluster nodes config, but AWS save it to all cluster nodes.</p>
+<p>Finally, the two <a href="https://cloud.google.com/memorystore/docs/memcached/best-practices">best</a> <a href="https://cloud.google.com/memorystore/docs/memcached/memory-management-best-practices">practice</a> pages are very worth reading if you're using Memorystore for Memcached.</p>
+<h2 id="azure">Azure</h2>
+<p>Azure doesn't implement the service itself, but uses Memcached Cloud as a <a href="https://azure.microsoft.com/en-us/updates/memcached-cloud-available-in-the-azure-store/">store add-on</a>.</p>
+<h2 id="memcached-cloud"><a href="https://redis.com/lp/memcached-cloud/">Memcached Cloud</a></h2>
+<p>This one is not really a memcached, but Redis. Nice trick!</p>
+<h1 id="anecdotes">Anecdotes</h1>
+<p>memcached is used in DDoS, because in old version the UDP port is open by default, it will respond to spoof requests and cause an amplification attack.</p>
+<p><a href="https://github.com/memcached/memcached/wiki/DDOS">https://github.com/memcached/memcached/wiki/DDOS</a></p>
+<p><a href="https://www.cloudflare.com/zh-cn/learning/ddos/memcached-ddos-attack/">https://www.cloudflare.com/zh-cn/learning/ddos/memcached-ddos-attack/</a></p>
+<p><a href="https://blog.cloudflare.com/memcrashed-major-amplification-attacks-from-port-11211/">https://blog.cloudflare.com/memcrashed-major-amplification-attacks-from-port-11211/</a></p>
+<h1 id="when-to-use-memcached">When to use memcached?</h1>
+<p>This question should be put in the head of this article, but after having so many materials above, we can easily derive the answer from them:</p>
+<p>Since MySQL has a dedicated tutorial for memcached, they must be good friends.</p>
+<p>And from <a href="https://cloud.google.com/memorystore/docs/memcached/memcached-overview">https://cloud.google.com/memorystore/docs/memcached/memcached-overview</a></p>
+<blockquote>
+<p>Some of the common Memcached use cases include caching of reference data, database query caching, and, in some cases, use as a session store.</p>
+</blockquote>
+
+</main>
+
+</body>
+</html>
