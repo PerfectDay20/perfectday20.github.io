@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Managed table’s location for Spark &amp; Hive</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Managed table’s location for Spark &amp; Hive</h1>
+    <p class="secondary">
+        
+        2023&#x2F;05&#x2F;01
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <p>When using Spark with Hive metastore, there are some differences in warehouse location configuration, which controls where to save the data for managed tables.</p>
+<p>If not using correctly, the result may be confusing.
+There are some machanisms behind the scenes:</p>
+<ul>
+<li>Hive uses <code>hive.metastore.warehouse.dir</code> in <code>hive-site.xml</code> to set warehouse path, the default value is <code>/user/hive/warehouse</code> in <code>hive-default.xml.template</code>.</li>
+<li>Spark uses <code>spark.sql.warehouse.dir</code>. <a href="https://spark.apache.org/docs/latest/sql-data-sources-hive-tables.html">It used Hive’s config, but that’s deprecated since Spark 2.0.0.</a> The default value is <code>$PWD/spark-warehouse</code>.</li>
+<li>When you create a database, metastore will record the database location in metastore’s table <code>DBS</code> as <code>DB_LOCATION_URI</code>.
+<ul>
+<li>If the database is created in Spark, the <code>DB_LOCATION_URI</code> is Spark’s warehouse config.</li>
+<li>If the database is create in Hive, the <code>DB_LOCATION_URI</code> is Hive’s warehouse config.</li>
+</ul>
+</li>
+<li>Hive will create a default database named <code>default</code>. If you don’t specify any specific database, you are using <code>default</code>. The <code>default</code>’s <code>DB_LOCATION_URI</code> is Hive’s warehouse config.</li>
+<li>When creating managed tables in a database, the table location will inherit from this database, no matter what tools you are using to create this table. For example, in database <code>default</code>, create two managed table with Spark and Hive, the location’s parent path will be same as Hive’s config.</li>
+</ul>
+<p>Enough for the background, now let’s see some different examples:</p>
+<p>I create a HDFS 3.3.2 in my local machine, set up a metastore for Hive 2.3.7 and Spark 3.3.2, all using the default configs.</p>
+<hr />
+<p>Then:</p>
+<p>Use spark-sql to create a table, without specifying database. <code>create table spark_text_table ...;</code></p>
+<ul>
+<li>the database is <code>default</code></li>
+<li>the table location is <code>hdfs://localhost:9000/user/hive/warehouse/spark_text_table</code></li>
+</ul>
+<hr />
+<p>Use spark-sql to create a database <code>db1</code>, then create a table <code>db1.spark_text_table</code>:</p>
+<ul>
+<li>the database is <code>db1</code></li>
+<li>the table location is <code>file:/Users/zhenzhang/Downloads/temp/spark/spark-warehouse/db1.db/spark_text_table</code> , which is under my working directory</li>
+</ul>
+<hr />
+<p>Use Hive to create a database <code>db2</code>, then create a table <code>db2.hive_text_table</code>:</p>
+<ul>
+<li>the database is <code>db2</code></li>
+<li>the table location is <code>hdfs://localhost:9000/user/hive/warehouse/db2.db/hive_text_table</code>. This location comes from Hive’s default config, then add a database path level <code>db2.db</code></li>
+</ul>
+<hr />
+<p>One caveat for the default Spark warehouse path <code>$PWD/spark-warehouse</code>: as it uses the present working directory as the warehouse path, if you call spark-sql/spark-shell at different directories and create new databases, you will save tables to different locations, which will greatly increase the management overhead.</p>
+<p>But there is still a good news: the databases and tables metadata is saved in Hive’s metastore, you can still query all the tables created before, even in different directories.</p>
+
+</main>
+
+</body>
+</html>

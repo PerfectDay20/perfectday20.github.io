@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Notes on Go GC and Java GC</title>
+    
+<link rel="stylesheet" href="https://perfectday20.me/bamboo-compare-table.css?h=fa739543b75e8cec99ed">
+
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Notes on Go GC and Java GC</h1>
+    <p class="secondary">
+        
+        2024&#x2F;10&#x2F;02
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <p>Most of the contents below are based on <a href="https://go.dev/doc/gc-guide">A Guide to the Go Garbage Collector</a> of Go 1.23.<br />
+It has amazing visualizations to help readers understand how Go GC works.</p>
+<hr />
+<table class="compare-table">
+<tr>
+<th> Go </th>
+<th> Java </th>
+</tr>
+<tr>
+<td>
+<p>Go has very few GC control options, only 2: <code>GOGC</code> and <code>GOMEMLIMIT</code>.</p>
+</td>
+<td>
+<ul>
+<li>Java has many different collectors (serial, parallel, <del>CMS</del>, G1, ZGC, Shenandoah...).</li>
+<li>Each of them has many options.</li>
+<li>You can even make choices in the different GC combinations for young and old generations. (Hopefully, some were removed in <a href="https://openjdk.org/jeps/214">JDK9</a> to make it easier to decide which combination to use.).</li>
+<li>But Java also tries to use automatic tunings to reduce developers' efforts.</li>
+</ul>
+</td>
+</tr>
+<tr>
+<td>
+<ul>
+<li>Mark-sweep GC.</li>
+<li>Tri-color algorithm.</li>
+<li>Non-generational.</li>
+<li>Sub-millisecond.</li>
+</ul>
+</td>
+<td>
+<ul>
+<li>CMS is mark-sweep.</li>
+<li>Serial, Parallel, and G1 are mark-sweep-compact.</li>
+<li>Tri-color.</li>
+<li>All generational.</li>
+<li>ZGC and Shenandoah can be sub-millisecond.</li>
+</ul>
+</td>
+</tr>
+<tr>
+<td>
+<p>Go defines a GC cycle as sweeping -&gt; idle -&gt; marking. The last phase is not <em>sweeping</em> but is <em>marking</em>.<br />
+One reason may be <code>GOGC</code> determines the target heap size after each GC cycle, so cycle end == marking end, which is the time the collector knows the live heap size.</p>
+<p>In the current implementation, sweeping is fast, and the cost can be ignored compared to marking.</p>
+<blockquote>
+<p>Target heap memory = Live heap + (Live heap + GC roots) * GOGC / 100</p>
+</blockquote>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<p><code>GOGC</code> triggers a new GC when heap size reaches the target size, which means it controls the GC frequency, the trade-off between cpu and mem.<br />
+So it's much simpler to control when GC occurs in Go.</p>
+<blockquote>
+<p>[D]oubling GOGC will double heap memory overheads and roughly halve GC CPU cost.</p>
+</blockquote>
+</td>
+<td>
+<p>Java triggers GC when the eden area (minor) or old generation (major) is full.<br />
+G1 can do periodic GC.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Go added <code>GOMEMLIMIT</code> in 1.19 to solve the problem that GOGC has to be set based on peak live heap size. In such cases, mem is not fully used in steady-state. With the help of <code>GOMEMLIMIT</code>, <code>GOGC</code> can be set based on steady-state.</p>
+</td>
+<td>
+<p><code>-Xmx</code></p>
+<p>From the Java world, it's hard to imagine why it takes so long for Go to add this similar parameter, since <code>-Xmx</code> is a very fundamental parameter and total available memory is the most important factor affecting GC performance.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p><code>GOGC</code> can be changed in real-time.</p>
+</td>
+<td>
+<p><code>-Xmx</code> can't.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>If <code>GOMEMLIMIT</code> is not set, Go has no upper mem limit if physical permits.</p>
+</td>
+<td>
+<p>If <code>-Xmx</code> is not set, Java heap default upper limit is decided by runtime (1/4 of physical mem).</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>If <code>GOGC</code> is not set, <code>GOMEMLIMIT</code> is set, then this represents a maximization of resource economy.</p>
+</td>
+<td>
+<p>Equals the default state of Java.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p><code>GOMEMLIMIT</code> is a soft limit. Go has an upper limit on the CPU time GC can use: 50%, in the time window: <code>2*GOMAXPROCS</code> CPU-seconds.<br />
+So if GC time reaches this limit, mem usage will grow beyond the <code>GOMEMLIMIT</code> to ensure programs make reasonable progress.</p>
+<blockquote>
+<p>[M]ost of the costs for the GC are incurred while the mark phase is active.</p>
+</blockquote>
+</td>
+<td>
+<p>Java sets default <code>-XX:+UseGCOverheadLimit</code>, which will throw an <code>OutOfMemoryError</code> if more than 98% of the total time is spent on garbage collection and less than 2% of the heap is recovered.</p>
+</td>
+</tr>
+<tr>
+<td>
+<p>Enabling transparent huge pages (THP) can improve throughput and latency at the cost of additional memory use.</p>
+</td>
+<td>
+<p>THP is not recommended for latency-sensitive applications due to unwanted latency spikes, for both G1 and ZGC.<br />
+ZGC recommends explicit large pages.</p>
+</td>
+</tr>
+</table>
+<h1 id="refs">Refs</h1>
+<ul>
+<li><a href="https://go.dev/doc/gc-guide">A Guide to the Go Garbage Collector</a></li>
+<li><a href="https://go.dev/blog/ismmkeynote">Getting to Go: The Journey of Go's Garbage Collector</a></li>
+<li><a href="https://docs.oracle.com/en/java/javase/22/gctuning/introduction-garbage-collection-tuning.html">HotSpot Virtual Machine Garbage Collection Tuning Guide</a></li>
+</ul>
+
+</main>
+
+</body>
+</html>
