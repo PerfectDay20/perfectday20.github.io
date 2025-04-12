@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | The Tour of Exposing Kubernetes Dashboard Out of Cluster</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>The Tour of Exposing Kubernetes Dashboard Out of Cluster</h1>
+    <p class="secondary">
+        
+        2025&#x2F;04&#x2F;11
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <blockquote>
+<p>💡 Note</p>
+<p>The newer or older version of Kubernetes dashboard may be easier to expose the services. This article is for version 7.11.1.</p>
+<p>This article is from the viewpoint of a Kubernetes newbie, (many) mistakes may exist.</p>
+</blockquote>
+<p>I have an All-In-One Ubuntu server running 24x7. One day when I was tweaking with Spark in a local mac, I wonder why not run it in the Ubuntu server? So I installed the YARN and HDFS on it. Running Spark on it was OK, but not too much fun. Then I remembered that Spark can also run on Kubernetes, and I have already deployed many docker containers on the server, so why not use this chance to learn the Kubernetes by running Spark on it?</p>
+<p>That’s where this story started.</p>
+<h1 id="version-info">Version info</h1>
+<ul>
+<li>Kubernetes 1.32.3</li>
+<li>K3s v1.32.3+k3s1 (079ffa8d)</li>
+<li>Kubernetes Dashboard 7.11.1</li>
+<li>Envoy gateway api v1.3.2</li>
+</ul>
+<h1 id="install-the-kubernetes">Install the Kubernetes</h1>
+<p>There are many ways to install a local development Kubernetes cluster, maybe too many to choose from. As a new comer I hesitated for a long time. After tried some distributions, I decided to use K3s.</p>
+<p>My first try is Kind, which is listed first in the Kubernetes <a href="https://kubernetes.io/docs/tasks/tools/">getting started doc</a>, the name means “Kubernetes IN Docker”. Very easy to install, but hard to change the registry mirror. My network condition is very special that I need to use a registry mirror to access all kinds of the registries, so Kind is out.</p>
+<p>My next try is Minikube, listed second in the doc. It uses docker to install the Kubernetes too. And the default resource settings can’t fully utilize my server, which is not preferred, out.</p>
+<p>The next option is k3d, which is based on docker too. At that time I had already decided to run the Kubernetes cluster in bare metal and not in the docker, so k3d is out.</p>
+<p>Then came the K3s, which fully fulfills my needs, can easily change the registry mirror, run in bare metal.</p>
+<h2 id="some-changes-to-the-k3s-installation">Some changes to the K3s installation</h2>
+<h3 id="change-cluster-version">Change cluster version</h3>
+<p>By default K3s uses a <a href="https://docs.k3s.io/upgrades/manual">stable release channel</a> to set up the cluster, which corresponding to Kubernetes 1.31 for now. But as I’m learning Kubernetes by reading its latest 1.32 doc, I need to install the version 1.32. This can be done to add <code>INSTALL_K3S_CHANNEL=latest</code> to the environment.</p>
+<h3 id="registry-mirror">Registry mirror</h3>
+<p>Create the registry mirror config file at <code>/etc/rancher/k3s/registries.yaml</code>:</p>
+<pre data-lang="yaml" style="background-color:#fdf6e3;color:#657b83;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#268bd2;">mirrors</span><span>:
+</span><span>  </span><span style="color:#268bd2;">docker.io</span><span>:
+</span><span>    </span><span style="color:#268bd2;">endpoint</span><span>:
+</span><span>      - </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">https://example.foo.bar</span><span style="color:#839496;">&quot;
+</span><span>  </span><span style="color:#268bd2;">registry.k8s.io</span><span>:
+</span><span>    </span><span style="color:#268bd2;">endpoint</span><span>:
+</span><span>      - </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">https://example.foo.bar</span><span style="color:#839496;">&quot;
+</span><span>  </span><span style="color:#268bd2;">gcr.io</span><span>:
+</span><span>    </span><span style="color:#268bd2;">endpoint</span><span>:
+</span><span>      - </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">https://example.foo.bar</span><span style="color:#839496;">&quot;
+</span><span>  </span><span style="color:#268bd2;">ghcr.io</span><span>:
+</span><span>    </span><span style="color:#268bd2;">endpoint</span><span>:
+</span><span>      - </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">https://example.foo.bar</span><span style="color:#839496;">&quot;
+</span><span>  </span><span style="color:#268bd2;">192.168.123.123:5000</span><span>:
+</span><span>    </span><span style="color:#268bd2;">endpoint</span><span>:
+</span><span>      - </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">http://192.168.123.123:5000</span><span style="color:#839496;">&quot;
+</span></code></pre>
+<h3 id="disable-addons">Disable <a href="https://docs.k3s.io/installation/packaged-components">AddOns</a></h3>
+<p>K3s bring some very convenient AddOns. But since I want to learn Kubernetes in its default state, I need to disable some of them.</p>
+<p>One is the local path provisioner, for automatically creating local volumes.</p>
+<p>One is the traefik ingress controller, I’ll install a gateway controller instead.</p>
+<p>There are <a href="https://docs.k3s.io/installation/packaged-components#disabling-manifests">many ways to disable them</a>:</p>
+<ul>
+<li>command line, like <code>--disable=traefik</code></li>
+<li>config file at <code>/etc/rancher/k3s/config.yaml</code></li>
+<li><code>.skip</code> file</li>
+</ul>
+<p>You’d better hard link the config files to other directory as a backup. Because in the future if you want to use the <code>/usr/local/bin/k3s-uninstall.sh</code> (created by installation) to uninstall the cluster, it will <code>rm -rf</code> the whole config dir.</p>
+<h1 id="install-kubernetes-dashboard">Install Kubernetes dashboard</h1>
+<p>By using helm, it’s very easy to install packages. Just follow the <a href="https://github.com/kubernetes/dashboard/blob/kubernetes-dashboard-7.11.1/README.md">official instructions</a>.</p>
+<p>But after installation, <a href="https://github.com/kubernetes/dashboard/blob/kubernetes-dashboard-7.11.1/docs/user/accessing-dashboard/README.md">the doc</a> only shows some ways to expose the endpoint in the localhost, using port forward to expose the endpoint in localhost, or using <code>kubectl proxy</code> to expose through the API server. Neither way is graceful for long term usage.</p>
+<p>In Kubernetes, an endpoint can be exposed by using:</p>
+<ul>
+<li>NodePort service. I’m not using this, as it’s not elegant.</li>
+<li><a href="https://kubernetes.io/docs/concepts/services-networking/ingress/">Ingress</a>. Not this either, because it’s feature-frozen and I don’t want to use a technology that is superseded.</li>
+<li><a href="https://kubernetes.io/docs/concepts/services-networking/gateway/">Gateway</a>. That’s the way.</li>
+</ul>
+<h1 id="install-gateway-api-controller">Install gateway api controller</h1>
+<p>A gateway need a controller, and there are <a href="https://gateway-api.sigs.k8s.io/implementations/">TOO MANY controller implementations</a> to choose from. Again, just like Kubernetes distributions, what a prosperous ecology!</p>
+<p>After viewing the <a href="https://gateway-api.sigs.k8s.io/implementations/v1.2/">implementation status</a>, there are some choices:</p>
+<ul>
+<li>Nginx, old and boring. <a href="https://boringtechnology.club/">Old and boring is GOOD</a>! But I want to learn something new. So pass.</li>
+<li>Traefik, tried it before, not a good experience, so pass.</li>
+<li>Istio and Cillium. Implemented many features. But the installation is a little complicated, need another CLI tool? pass.</li>
+<li>Envoy. Yeah. I have saw it many times (even back to <a href="https://dropbox.tech/infrastructure/how-we-migrated-dropbox-from-nginx-to-envoy">2020</a>, maybe I’m the victim of the propaganda) Let’s try with it. (After using it, I found the docs are detailed and awesome, yet another reason to recommend it)</li>
+</ul>
+<p>Still use helm to <a href="https://gateway.envoyproxy.io/docs/tasks/quickstart/#installation">install Envoy</a>, very easy.</p>
+<p>Finish the quickstart, or at least create the <a href="https://github.com/envoyproxy/gateway/blob/v1.3.2/examples/kubernetes/quickstart.yaml#L2">GatewayClass within</a> for future use.</p>
+<h1 id="expose-the-dashboard">Expose the dashboard</h1>
+<p>Then it’s time to configure the gateway and forward the traffic to the dashboard.</p>
+<p>Dashboard use Kong proxy as a service, but only at port 443.</p>
+<p>By using gateway, there are many ways to expose a service.</p>
+<p>The current status is:</p>
+<p>Browser —(downstream, http or https)—&gt; Envoy gateway —(upstream, https)—&gt; Kong</p>
+<h2 id="use-httproute-and-backendtlspolicy">Use HTTPRoute and BackendTLSPolicy</h2>
+<p>First I used gateway HTTP and HTTPS listeners with HTTPRoute to Kong’s 443 port, <a href="https://gateway-api.sigs.k8s.io/guides/tls/">HTTPRoute here only support Terminate TLS mode</a>. After the service and pods are created, I got this error because Envoy call Kong with HTTP:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>400 Bad Request
+</span><span>The plain HTTP request was sent to HTTPS port
+</span></code></pre>
+<p>To change the Envoy’s call to HTTPS, I need to use a BackendTLSPolicy. Kong’s certificate is needed for creating the BackendTLSPolicy and I don’t find how to get it. Seems like the certificate is created somewhere in the installation process. Or I can create my own certificate and make Kong use it.</p>
+<p>But I don’t want to learn Kong here, because it duplicates with Envoy as a proxy.</p>
+<h2 id="use-tls-or-tcp-listener">Use TLS or TCP listener</h2>
+<p>Then I used the TLS listener with TLSRoute, and TCP listener with TCPRoute, both worked if the browser inited a HTTPS downstream request, because Envoy will not decrypt the package content and just passed it to the Kong.</p>
+<pre data-lang="yaml" style="background-color:#fdf6e3;color:#657b83;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#268bd2;">apiVersion</span><span>: </span><span style="color:#2aa198;">gateway.networking.k8s.io/v1
+</span><span style="color:#268bd2;">kind</span><span>: </span><span style="color:#2aa198;">Gateway
+</span><span style="color:#268bd2;">metadata</span><span>:
+</span><span>  </span><span style="color:#268bd2;">name</span><span>: </span><span style="color:#2aa198;">dashboard-gateway
+</span><span>  </span><span style="color:#268bd2;">namespace</span><span>: </span><span style="color:#2aa198;">kubernetes-dashboard
+</span><span style="color:#268bd2;">spec</span><span>:
+</span><span>  </span><span style="color:#268bd2;">gatewayClassName</span><span>: </span><span style="color:#2aa198;">eg
+</span><span>  </span><span style="color:#268bd2;">listeners</span><span>:
+</span><span>    - </span><span style="color:#268bd2;">name</span><span>: </span><span style="color:#2aa198;">tcp1
+</span><span>      </span><span style="color:#268bd2;">protocol</span><span>: </span><span style="color:#2aa198;">TCP
+</span><span>      </span><span style="color:#268bd2;">port</span><span>: </span><span style="color:#6c71c4;">80
+</span><span>    - </span><span style="color:#268bd2;">name</span><span>: </span><span style="color:#2aa198;">tcp2
+</span><span>      </span><span style="color:#268bd2;">protocol</span><span>: </span><span style="color:#2aa198;">TCP
+</span><span>      </span><span style="color:#268bd2;">port</span><span>: </span><span style="color:#6c71c4;">443
+</span><span>---
+</span><span style="color:#268bd2;">apiVersion</span><span>: </span><span style="color:#2aa198;">gateway.networking.k8s.io/v1alpha2
+</span><span style="color:#268bd2;">kind</span><span>: </span><span style="color:#2aa198;">TCPRoute
+</span><span style="color:#268bd2;">metadata</span><span>:
+</span><span>  </span><span style="color:#268bd2;">name</span><span>: </span><span style="color:#2aa198;">tcproute
+</span><span>  </span><span style="color:#268bd2;">namespace</span><span>: </span><span style="color:#2aa198;">kubernetes-dashboard
+</span><span style="color:#268bd2;">spec</span><span>:
+</span><span>  </span><span style="color:#268bd2;">parentRefs</span><span>:
+</span><span>    - </span><span style="color:#268bd2;">name</span><span>: </span><span style="color:#2aa198;">dashboard-gateway
+</span><span>  </span><span style="color:#268bd2;">rules</span><span>:
+</span><span>    - </span><span style="color:#268bd2;">backendRefs</span><span>:
+</span><span>        - </span><span style="color:#268bd2;">group</span><span>: </span><span style="color:#839496;">&quot;&quot;
+</span><span>          </span><span style="color:#268bd2;">kind</span><span>: </span><span style="color:#2aa198;">Service
+</span><span>          </span><span style="color:#268bd2;">name</span><span>: </span><span style="color:#2aa198;">kubernetes-dashboard-kong-proxy
+</span><span>          </span><span style="color:#268bd2;">port</span><span>: </span><span style="color:#6c71c4;">443
+</span><span>          </span><span style="color:#268bd2;">weight</span><span>: </span><span style="color:#6c71c4;">1
+</span></code></pre>
+<p>https://example.local and https://example.local:80 both worked. But HTTPS with port 80? Awkward.</p>
+<p>The returned certificate in browser is from Kong now.</p>
+<p>In the future I want to use a sub path of the URL to access the dashboard, and use other paths for other services. Since TLS or TCP works in the lower network stack levels, the proxy is not handling the HTTP URL part, so it can’t rewrite the path.</p>
+<p>So the solution goes back to the original one and I have to use the HTTPRoute.</p>
+<h2 id="use-httproute-and-change-the-kong-s-config">Use HTTPRoute and change the Kong’s config</h2>
+<p>If I have to use the HTTPRoute, then there is another choice: make Kong proxy serve http at port 80.</p>
+<p>After fiddling with helm chart content for a while. I found dashboard helm chart <a href="https://github.com/kubernetes/dashboard/blob/kubernetes-dashboard-7.11.1/charts/kubernetes-dashboard/Chart.yaml#L46">depends on Kong’s chart</a>, then find some kong helm chart values.yaml. The default http proxy is <a href="https://github.com/Kong/charts/blob/kong-2.46.0/charts/kong/values.yaml#L304">enabled</a>, but the corresponding part in dashboard’s values.yaml is <a href="https://github.com/kubernetes/dashboard/blob/kubernetes-dashboard-7.11.1/charts/kubernetes-dashboard/values.yaml#L399">disabled</a>!</p>
+<p>So thats the point!</p>
+<p>Just copy the values.yaml, change the value, then use <code>helm upgrade</code> or just use the CLI to set the changed value.</p>
+<p>HTTPS worked as expected. HTTP can see the login page, but can’t login. This may be caused by cookie secure settings? Because when clicked login, the browser didn't send correct cookies for subsequent requests in HTTP. It seems that the cookies are not set by Set-Cookie header, but by some JavaScript that reads the response, as the reponse contains the token being sent.</p>
+<p>2025/04/12 Updated: The <a href="https://github.com/kubernetes/dashboard/blob/release/7.11.1/docs/user/access-control/creating-sample-user.md#accessing-dashboard">doc</a> also has a note for this:</p>
+<blockquote>
+<p>Token login is ONLY allowed when the browser is accessing the UI over https. If your networking path to the UI is via http, the login will fail with an invalid token error.</p>
+</blockquote>
+<p>But anyway, HTTPS works is all I need.</p>
+<p>And there is still another way.</p>
+<h2 id="just-drop-kong-proxy">Just drop kong proxy</h2>
+<p><a href="https://github.com/kubernetes/dashboard/blob/kubernetes-dashboard-7.11.1/charts/kubernetes-dashboard/templates/config/gateway.yaml#L26">The Kong’s config file</a> tells that Kong works by forward traffic to dashboard’s API, auth and web endpoint, so in theory I can disable the Kong proxy, and use Envoy to do it.</p>
+<p>But to keep the change as small as possible, so in the future if the dashboard chart internal changes then I don’t need to dive too deep with it. So just keep it this way now. (From the <a href="https://artifacthub.io/packages/helm/k8s-dashboard/kubernetes-dashboard#upgrading-an-existing-release-to-a-new-major-version">changelog</a>, 6.x.x to 7.x.x added ingress-nginx-controller, then 7.x.x-alphaX to 7.x.x it was replaced by Kong, so there are always some architecture changes)</p>
+<h1 id="summary">Summary</h1>
+<ul>
+<li>install k3s</li>
+<li>install Envoy gateway api</li>
+<li>change dashboard default settings</li>
+<li>create gateway, done</li>
+</ul>
+<h1 id="side-note">Side note</h1>
+<p>Kubernetes is more advanced and opening (for extension) than YARN. There are even some good projects such as Helm to help installing packages in Kubernetes, which YARN doesn’t have(?).</p>
+<p>Although this comparison is not fair. YARN is created to support Hadoop and it successfully achieved the goals. But after truly using the Kubernetes, I can feel the robust of the Kubernetes and why <a href="https://www.reddit.com/r/bigdata/comments/c0a0ro/is_apache_hadoop_dying_is_it_already_dead/">YARN is fading</a>.</p>
+
+</main>
+
+</body>
+</html>

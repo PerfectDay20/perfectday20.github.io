@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Convert BSON to Parquet</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Convert BSON to Parquet</h1>
+    <p class="secondary">
+        
+        2022&#x2F;02&#x2F;23
+        
+
+        
+        
+        <a href="https://perfectday20.me/tags/spark/">#Spark</a>
+        
+        
+    </p>
+    <div class="space"></div>
+    <p>MongoDB is an OLTP database, when using it as an OLAP for huge data processing, it’ll take a long time to finish the job. It’s not the MongoDB’s fault, as it's not what it is designed for. In this case, we want to make the data available in other OLAP, such as Hive, Presto, Athena.</p>
+<p>MongoDB stores data in BSON, which is the binary representation of JSON, so typically it contains many nested structures. There are two choices for the modern columnar format, Parquet and ORC. Since Parquet uses Dremel algorithm to handle the nested structure, it's the most suitable choice.</p>
+<p>Parquet is deeply rooted in Hadoop ecosystem. Using other tools(like Hive, Spark) to create parquet files is simple.  But writing Parquet without Hadoop dependency is nearly impossible. Luckily there are some third format converters provided in their <a href="https://github.com/apache/parquet-mr">Github Repository</a>.</p>
+<h1 id="avro">Avro</h1>
+<p>We can create the data schema with Avro in JSON, compile the schema to Java classes, then use the <code>AvroParquetWriter</code> as below:</p>
+<pre data-lang="java" style="background-color:#fdf6e3;color:#657b83;" class="language-java "><code class="language-java" data-lang="java"><span style="color:#859900;">ParquetWriter</span><span>&lt;</span><span style="color:#859900;">Struct</span><span>&gt; writer = </span><span style="color:#859900;">AvroParquetWriter</span><span>.&lt;</span><span style="color:#859900;">Struct</span><span>&gt;</span><span style="color:#b58900;">builder</span><span>(</span><span style="color:#859900;">new Path</span><span>(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">avro.parquet</span><span style="color:#839496;">&quot;</span><span>))
+</span><span>                .</span><span style="color:#b58900;">withSchema</span><span>(</span><span style="color:#859900;">Struct</span><span>.</span><span style="color:#b58900;">getClassSchema</span><span>())
+</span><span>                .</span><span style="color:#b58900;">build</span><span>();
+</span></code></pre>
+<p>This works.</p>
+<p>Presto and Hive can read the data. One drawback of this approach is that the schema is very verbose, especially for deeply nested data type:</p>
+<pre data-lang="json" style="background-color:#fdf6e3;color:#657b83;" class="language-json "><code class="language-json" data-lang="json"><span>{</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">namespace</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">com.example.avro</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>  </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">record</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>  </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">Struct</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>  </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">fields</span><span style="color:#839496;">&quot;</span><span>: [
+</span><span>    {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">_id</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: {
+</span><span>      </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">namespace</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">com.example.avro</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>      </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">record</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>      </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">ID</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>      </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">fields</span><span style="color:#839496;">&quot;</span><span>: [
+</span><span>        {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">a</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>,</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">long</span><span style="color:#839496;">&quot;</span><span>]},
+</span><span>        {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">b</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>,</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">int</span><span style="color:#839496;">&quot;</span><span>]},
+</span><span>        {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">c</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>,</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">int</span><span style="color:#839496;">&quot;</span><span>]}
+</span><span>      ]
+</span><span>    }},
+</span><span>    {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">value</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>, {
+</span><span>      </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">namespace</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">com.example.avro</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>      </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">record</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>      </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">Value</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>      </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">fields</span><span style="color:#839496;">&quot;</span><span>: [
+</span><span>        {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">d</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>,</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">long</span><span style="color:#839496;">&quot;</span><span>]},
+</span><span>        {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">e</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>,</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">long</span><span style="color:#839496;">&quot;</span><span>]},
+</span><span>        {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">f</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>, {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">map</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">values</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">long</span><span style="color:#839496;">&quot;</span><span>]}]},
+</span><span>        {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">g</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>, {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">map</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">values</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>, {
+</span><span>          </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">namespace</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">com.example.avro</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>          </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">record</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>          </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">r</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>          </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">fields</span><span style="color:#839496;">&quot;</span><span>: [
+</span><span>            {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">h</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>,</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">long</span><span style="color:#839496;">&quot;</span><span>]},
+</span><span>            {</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&quot;</span><span>: </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">i</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">type</span><span style="color:#839496;">&quot;</span><span>: [</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">null</span><span style="color:#839496;">&quot;</span><span>,</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">long</span><span style="color:#839496;">&quot;</span><span>]}
+</span><span>          ]
+</span><span>        }]}]}
+</span><span>      ]
+</span><span>    }]}
+</span><span>  ]
+</span><span>}
+</span></code></pre>
+<h1 id="protobuf">Protobuf</h1>
+<p>Another way is using protobuf converter. The mechanism is same as Avro: define the schema, compile to Java source code, create the converter:</p>
+<pre data-lang="java" style="background-color:#fdf6e3;color:#657b83;" class="language-java "><code class="language-java" data-lang="java"><span style="color:#859900;">ParquetWriter</span><span>&lt;</span><span style="color:#859900;">MyStruct</span><span>&gt; parquetWriter = </span><span style="color:#859900;">new ParquetWriter</span><span>&lt;&gt;(
+</span><span>        </span><span style="color:#859900;">new Path</span><span>(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">test.parquet</span><span style="color:#839496;">&quot;</span><span>),
+</span><span>        </span><span style="color:#859900;">new ProtoWriteSupport</span><span>&lt;&gt;(</span><span style="color:#859900;">MyStruct</span><span>.</span><span style="color:#d33682;">class</span><span>)
+</span><span>);
+</span></code></pre>
+<p>This time, the schema is very brief:</p>
+<pre data-lang="proto" style="background-color:#fdf6e3;color:#657b83;" class="language-proto "><code class="language-proto" data-lang="proto"><span style="color:#268bd2;">message </span><span style="color:#b58900;">MyStruct </span><span>{
+</span><span>    </span><span style="color:#268bd2;">Id</span><span> _id = 1;
+</span><span>    </span><span style="color:#268bd2;">Value value </span><span>= </span><span style="color:#6c71c4;">2</span><span>;
+</span><span>}
+</span><span> 
+</span><span style="color:#268bd2;">message </span><span style="color:#b58900;">Id </span><span>{
+</span><span>    </span><span style="color:#859900;">int64 </span><span style="color:#268bd2;">a </span><span>= </span><span style="color:#6c71c4;">1</span><span>;
+</span><span>    </span><span style="color:#859900;">int32 </span><span style="color:#268bd2;">b </span><span>= </span><span style="color:#6c71c4;">2</span><span>;
+</span><span>    </span><span style="color:#859900;">int32 </span><span style="color:#268bd2;">c </span><span>= </span><span style="color:#6c71c4;">3</span><span>;
+</span><span>}
+</span><span> 
+</span><span style="color:#268bd2;">message </span><span style="color:#b58900;">Value </span><span>{
+</span><span>    </span><span style="color:#859900;">int64 </span><span style="color:#268bd2;">d </span><span>= </span><span style="color:#6c71c4;">1</span><span>;
+</span><span>    </span><span style="color:#859900;">int64 </span><span style="color:#268bd2;">e </span><span>= </span><span style="color:#6c71c4;">2</span><span>;
+</span><span>    </span><span style="color:#859900;">map</span><span>&lt;</span><span style="color:#859900;">string</span><span>, </span><span style="color:#859900;">int64</span><span>&gt; </span><span style="color:#268bd2;">f </span><span>= </span><span style="color:#6c71c4;">3</span><span>;
+</span><span>    </span><span style="color:#859900;">map</span><span>&lt;</span><span style="color:#859900;">string</span><span>, </span><span style="color:#268bd2;">Cr</span><span>&gt; </span><span style="color:#268bd2;">g </span><span>= </span><span style="color:#6c71c4;">4</span><span>;
+</span><span> 
+</span><span>    </span><span style="color:#268bd2;">message </span><span style="color:#b58900;">Cr </span><span>{
+</span><span>        </span><span style="color:#859900;">int64 </span><span style="color:#268bd2;">h </span><span>= </span><span style="color:#6c71c4;">1</span><span>;
+</span><span>        </span><span style="color:#859900;">int64 </span><span style="color:#268bd2;">i </span><span>= </span><span style="color:#6c71c4;">2</span><span>;
+</span><span>    }
+</span><span>}
+</span></code></pre>
+<p>But in my test, the nested part create by the converter is not in compliance with <a href="https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#maps">Parquet specification</a>. So Hive&amp;Presto just doesn’t recognize them.</p>
+<p>The difference can be shown by parquet-tools to parse the schema:</p>
+<pre data-lang="java" style="background-color:#fdf6e3;color:#657b83;" class="language-java "><code class="language-java" data-lang="java"><span style="color:#93a1a1;">// expected map structure
+</span><span>optional group </span><span style="color:#b58900;">f </span><span>(</span><span style="color:#cb4b16;">MAP</span><span>) {
+</span><span>      repeated group </span><span style="color:#b58900;">key_value </span><span>(</span><span style="color:#cb4b16;">MAP_KEY_VALUE</span><span>) {
+</span><span>        required binary </span><span style="color:#b58900;">key </span><span>(</span><span style="color:#cb4b16;">STRING</span><span>);
+</span><span>        optional int64 value;
+</span><span>      }
+</span><span>    }
+</span><span>
+</span><span style="color:#93a1a1;">// created map structure
+</span><span>repeated group f = </span><span style="color:#6c71c4;">3 </span><span>{
+</span><span>      optional binary </span><span style="color:#b58900;">key </span><span>(</span><span style="color:#cb4b16;">STRING</span><span>) = </span><span style="color:#6c71c4;">1</span><span>;
+</span><span>      optional int64 value = </span><span style="color:#6c71c4;">2</span><span>;
+</span><span>    }
+</span></code></pre>
+<h1 id="flink">Flink</h1>
+<p>Flink can handle both unbounded and bounded dataset, it’s a widely used BigData tool, so I assume it must have an easy-to-use Sink to write Parquet files, right?</p>
+<p>But to my surprise, there is no such Sink. All the examples I found are using Avro converters.</p>
+<h1 id="spark">Spark</h1>
+<p>So finally, the Spark.</p>
+<p>Using Spark has many advantages:</p>
+<ul>
+<li>The native interface to write Parquet and ORC (native API of Spark, not in the sense of JNI)</li>
+<li>No need to define schema with other formats(Protobuf, Avro, or self-invented), POJO Bean is enough</li>
+<li>Parallel processing is just a few lines of code</li>
+</ul>
+<pre data-lang="java" style="background-color:#fdf6e3;color:#657b83;" class="language-java "><code class="language-java" data-lang="java"><span>@</span><span style="color:#268bd2;">Data
+</span><span style="color:#586e75;">public </span><span style="color:#268bd2;">class </span><span style="color:#b58900;">Struct </span><span>{
+</span><span>    </span><span style="color:#859900;">ID </span><span>_id; </span><span style="color:#93a1a1;">// Same name in mongo
+</span><span>    </span><span style="color:#859900;">Value </span><span>value;
+</span><span>    </span><span style="color:#268bd2;">int </span><span>pdate;
+</span><span> 
+</span><span>    @</span><span style="color:#268bd2;">Data
+</span><span>    </span><span style="color:#586e75;">public static </span><span style="color:#268bd2;">class </span><span style="color:#b58900;">ID </span><span>{
+</span><span>        </span><span style="color:#859900;">Long </span><span>a;
+</span><span>        </span><span style="color:#859900;">Integer </span><span>b;
+</span><span>        </span><span style="color:#859900;">Integer </span><span>c;
+</span><span>    }
+</span><span> 
+</span><span>    @</span><span style="color:#268bd2;">Data
+</span><span>    </span><span style="color:#586e75;">public static </span><span style="color:#268bd2;">class </span><span style="color:#b58900;">Value </span><span>{
+</span><span>        </span><span style="color:#859900;">Long </span><span>d;
+</span><span>        </span><span style="color:#859900;">Long </span><span>e;
+</span><span>        </span><span style="color:#859900;">Map</span><span>&lt;</span><span style="color:#859900;">String</span><span>, </span><span style="color:#859900;">Long</span><span>&gt; f;
+</span><span>        </span><span style="color:#859900;">Map</span><span>&lt;</span><span style="color:#859900;">String</span><span>, </span><span style="color:#859900;">Cr</span><span>&gt; g;
+</span><span>    }
+</span><span> 
+</span><span>    @</span><span style="color:#268bd2;">Data
+</span><span>    </span><span style="color:#586e75;">public static </span><span style="color:#268bd2;">class </span><span style="color:#b58900;">Cr </span><span>{
+</span><span>        </span><span style="color:#859900;">Long </span><span>h;
+</span><span>        </span><span style="color:#859900;">Long </span><span>i;
+</span><span>    }
+</span><span>}
+</span><span> 
+</span><span>    </span><span style="color:#586e75;">public static</span><span> void </span><span style="color:#b58900;">main</span><span>(</span><span style="color:#859900;">String</span><span style="color:#586e75;">[]</span><span> args) throws </span><span style="color:#859900;">IOException </span><span>{
+</span><span>        </span><span style="color:#859900;">SparkSession</span><span> spark = </span><span style="color:#859900;">SparkSession</span><span>.</span><span style="color:#b58900;">builder</span><span>().</span><span style="color:#b58900;">getOrCreate</span><span>();
+</span><span> 
+</span><span>        </span><span style="color:#859900;">Dataset</span><span>&lt;</span><span style="color:#859900;">Struct</span><span>&gt; dataset = spark.</span><span style="color:#b58900;">createDataset</span><span>(</span><span style="color:#859900;">Arrays</span><span>.</span><span style="color:#b58900;">asList</span><span>(</span><span style="color:#b58900;">createEmptyStruct</span><span>(), </span><span style="color:#b58900;">createEmptyStruct</span><span>()),
+</span><span>                </span><span style="color:#859900;">Encoders</span><span>.</span><span style="color:#b58900;">bean</span><span>(</span><span style="color:#859900;">Struct</span><span>.</span><span style="color:#d33682;">class</span><span>));
+</span><span> 
+</span><span>        dataset.</span><span style="color:#b58900;">repartition</span><span>(</span><span style="color:#6c71c4;">1</span><span>).</span><span style="color:#b58900;">write</span><span>()
+</span><span>                .</span><span style="color:#b58900;">option</span><span>(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">compression</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">gzip</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>                .</span><span style="color:#b58900;">mode</span><span>(</span><span style="color:#859900;">SaveMode</span><span>.</span><span style="color:#859900;">Overwrite</span><span>)
+</span><span>                .</span><span style="color:#b58900;">partitionBy</span><span>(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">pdate</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>                .</span><span style="color:#b58900;">parquet</span><span>(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">parquet</span><span style="color:#839496;">&quot;</span><span>);
+</span><span>    }
+</span></code></pre>
+<p>One caveat of using <code>Encoders.bean()</code> to create the schema: the fields are sorted by name, because it uses <code>TreeMap</code> to parse the class. So in schema evolution, the new columns are not always append to the last.</p>
+
+</main>
+
+</body>
+</html>
