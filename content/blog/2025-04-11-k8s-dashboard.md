@@ -186,6 +186,9 @@ Just copy the values.yaml, change the value, then use `helm upgrade` or just use
 
 HTTPS worked as expected. HTTP can see the login page, but can’t login. This may be caused by cookie secure settings? Because when clicked login, the browser didn't send correct cookies for subsequent requests in HTTP. It seems that the cookies are not set by Set-Cookie header, but by some JavaScript that reads the response, as the reponse contains the token being sent.
 
+2025/04/12 Updated: The [doc](https://github.com/kubernetes/dashboard/blob/release/7.11.1/docs/user/access-control/creating-sample-user.md#accessing-dashboard) also has a note for this:
+> Token login is ONLY allowed when the browser is accessing the UI over https. If your networking path to the UI is via http, the login will fail with an invalid token error.
+
 But anyway, HTTPS works is all I need.
 
 And there is still another way.
