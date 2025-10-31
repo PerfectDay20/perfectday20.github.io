@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Catalog config for Iceberg &amp; Delta Lake &amp; Hudi</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Catalog config for Iceberg &amp; Delta Lake &amp; Hudi</h1>
+    <p class="secondary">
+        
+        2023&#x2F;06&#x2F;02
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <p>Iceberg, Delta Lake and Hudi are three projects to build data lakes or Lakehouses. They all provide ACID transactions, metadata evolution, time travel and many other functions to Spark.</p>
+<p>All of them use the spark session extension and spark sql catalog to augment Spark SQL’s functionality.</p>
+<p>One background info: Spark has a default catalog named <code>spark_catalog</code>, users can use a custom implementation, and also create new catalogs.</p>
+<p>Below are some config examples and comparisons using these 3 projects, all derived and modified from official documents.</p>
+<p>Versions: Spark 3.3.2, Iceberg 1.3.0, Delta Lake 2.3.0, Hudi 0.13.1</p>
+<h1 id="iceberg">Iceberg</h1>
+<p>Iceberg’s config is very flexible, you can both replace the <code>spark_catalog</code> implementation and create new ones.</p>
+<p>It has two spark catalog implementations:</p>
+<ul>
+<li><code>org.apache.iceberg.spark.SparkSessionCatalog</code> adds support for Iceberg tables to Spark’s built-in catalog, and delegates to the built-in catalog for non-Iceberg tables. This one can only be used on <code>spark_catalog</code></li>
+<li><code>org.apache.iceberg.spark.SparkCatalog</code> supports a Hive Metastore or a Hadoop warehouse as a catalog. This one can be used on <code>spark_catalog</code> and other user named catalogs. But this catalog will only load iceberg tables, meaning you can’t see plain old hive tables</li>
+</ul>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>spark-sql --packages org.apache.iceberg:iceberg-spark-runtime-3.3_2.12:1.3.0\
+</span><span>    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+</span><span>    --conf spark.sql.catalog.hive=org.apache.iceberg.spark.SparkCatalog \
+</span><span>    --conf spark.sql.catalog.hive.type=hive \
+</span><span>    --conf spark.sql.catalog.hive.uri=thrift://localhost:9083
+</span></code></pre>
+<p>This example creates a new catalog named <code>hive</code>, connecting to Hive’s metastore. So there are two catalogs, <code>spark_catalog</code> and <code>hive</code>.</p>
+<ul>
+<li>the <code>spark_catalog</code> can only handle non-iceberg tables, even if you created some iceberg tables in it using other config before</li>
+<li>the <code>hive</code> can only handle iceberg tables, if you created some non-iceberg tables in it using other config before</li>
+</ul>
+<p>When creating a table without specifying catalog, it’ll use <code>spark_catalog</code>; when you want to create a iceberg table, you must use the catalog <code>hive</code>, for example</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span># first
+</span><span>create database hive.iceberg_db;
+</span><span># then
+</span><span>create table hive.iceberg_db.iceberg_table ...;
+</span><span>
+</span><span># or
+</span><span>use hive.iceberg_db;
+</span><span>create table iceberg_table ...; 
+</span></code></pre>
+<p>When creating table under iceberg’s catalog, the tables default to iceberg, so you don’t need to specify <code>using iceberg</code>, but I think adding it is a good practice.</p>
+<p>One interesting thing is that Hive can read the iceberg table schema, as it’s stored in the metastore, but can’t read the data.</p>
+<p>Another config example:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>spark-sql --packages org.apache.iceberg:iceberg-spark-runtime-3.3_2.12:1.3.0\
+</span><span>    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+</span><span>    --conf spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog \
+</span><span>    --conf spark.sql.catalog.spark_catalog.type=hive \
+</span><span>    --conf spark.sql.catalog.spark_catalog.uri=thrift://localhost:9083 
+</span></code></pre>
+<p>There is only one catalog <code>spark_catalog</code>, it can handle both iceberg and non-iceberg tables.</p>
+<p>A final example:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>spark-sql --packages org.apache.iceberg:iceberg-spark-runtime-3.3_2.12:1.3.0\
+</span><span>    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+</span><span>    --conf spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog \
+</span><span>    --conf spark.sql.catalog.spark_catalog.type=hive \
+</span><span>    --conf spark.sql.catalog.local=org.apache.iceberg.spark.SparkCatalog \
+</span><span>    --conf spark.sql.catalog.local.type=hadoop \
+</span><span>    --conf spark.sql.catalog.local.warehouse=/Users/zhenzhang/Downloads/temp/iceberg/warehouse
+</span></code></pre>
+<ul>
+<li>The <code>spark_catalog</code> is using the <code>org.apache.iceberg.spark.SparkSessionCatalog</code>, not <code>org.apache.iceberg.spark.SparkCatalog</code>, so it can handle both iceberg and non-iceberg tables. The metadata is saved in Hive’s metastore.</li>
+<li>Catalog <code>local</code> can only handle iceberg tables. The metadata is saved in local</li>
+</ul>
+<p>Two different catalog implementations add some complexity in config, but once you understand them, it’s quite flexible to switch among different catalogs.</p>
+<h1 id="delta-lake">Delta Lake</h1>
+<p>Compared to Iceberg, the config is simple, you can only replace the <code>spark_catalog</code> implementation, not adding new one:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>spark-sql --packages io.delta:delta-core_2.12:2.3.0 \
+</span><span>  --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
+</span><span>  --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
+</span></code></pre>
+<h1 id="hudi">Hudi</h1>
+<p>Same as Delta Lake, replacing <code>spark_catalog</code></p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>spark-shell --packages org.apache.hudi:hudi-spark3.3-bundle_2.12:0.13.1 \
+</span><span>  --conf spark.sql.extensions=org.apache.spark.sql.hudi.HoodieSparkSessionExtension \
+</span><span>  --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.hudi.catalog.HoodieCatalog
+</span><span>
+</span></code></pre>
+
+</main>
+
+</body>
+</html>

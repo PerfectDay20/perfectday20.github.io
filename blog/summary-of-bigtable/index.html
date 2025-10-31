@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Summary of Bigtable</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Summary of Bigtable</h1>
+    <p class="secondary">
+        
+        2021&#x2F;11&#x2F;28
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <p>A bigtable is a sparse, distributed, persistent multi-dimensional sorted map.</p>
+<h1 id="features">Features</h1>
+<ul>
+<li>Wide applicability: from backend bulk processing to realtime data serving</li>
+<li>Scalability: supports PB level data and thousands of commodity servers</li>
+<li>High performance and avaliability</li>
+</ul>
+<h1 id="data-model">Data Model</h1>
+<p>(Row, column, time) -&gt; value.</p>
+<p>Columns are divided into different families for access control and locality refinement (see below).</p>
+<p>Time is used to mark different versions of value.</p>
+<h1 id="building-blocks">Building Blocks</h1>
+<ul>
+<li>SSTable: immutable sorted string table. Use index to faster block locates</li>
+<li>Chubby: provide namespace of directory and files, callback notification, session control, distributed locks. (Similar to Zookeeper)</li>
+</ul>
+<h1 id="implementation">Implementation</h1>
+<p>Three major components:</p>
+<ul>
+<li>Master server: assign tablets(key range), balance tablet servers load, handle schema changes</li>
+<li>Tablet server: serve read/write, split tablet when needed</li>
+<li>Client: most clients never communicate with Master server, so single-master is not a problem in system load</li>
+</ul>
+<p>A write operation consists commit log -&gt; memtable -&gt; SSTable.</p>
+<p>The immutable character of SSTable means it need compaction to optimize data. Three type of compactions:</p>
+<ul>
+<li>Minor: memtable -&gt; one SSTable</li>
+<li>Merging: memtable + a few SSTables -&gt; one SSTable</li>
+<li>Major: all SSTables -&gt; one SSTable (really reclaim resources of deleted data)</li>
+</ul>
+<h1 id="refinements">Refinements</h1>
+<ul>
+<li>Locality groups: group column families that are always accessed together in same SSTable for read performance. Locality groups can be put into different places(RAM/Disk)</li>
+<li>Compression: two-pass custom compression scheme</li>
+<li>Caching</li>
+<li>Bloom filter: for fewer disk seek</li>
+<li>Single commit-log file</li>
+<li>Compaction to reduce recovery time</li>
+<li>Exploit SSTable immutablity for concurrency</li>
+</ul>
+<h1 id="performance">Performance</h1>
+<p>Random writes are better than random reads.</p>
+<p>The aggregate performance is growing as cluster scaling, but single machine performance is degrading, especially read/write without RAM cache.</p>
+<h1 id="lessons">Lessons</h1>
+<ul>
+<li>Distributed systems are vulnerable to many types of failures, from network to other dependency modules</li>
+<li>Delay adding new featuers until it is clear how the new features will be used</li>
+<li>Build proper system-level monitoring</li>
+<li>Keep design simple</li>
+</ul>
+<h1 id="features-related-to-cassandra">Features related to Cassandra</h1>
+<ul>
+<li>Every value also has a timestamp, but this timestamp is used to resolve conflict</li>
+<li>Persistent level contains commit-log/memtable/SSTable</li>
+<li>SSTable compaction for recovery</li>
+</ul>
+
+</main>
+
+</body>
+</html>

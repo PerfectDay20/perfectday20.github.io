@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Use CASE to combine stages in Spark SQL</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Use CASE to combine stages in Spark SQL</h1>
+    <p class="secondary">
+        
+        2022&#x2F;05&#x2F;01
+        
+
+        
+        
+        <a href="https://perfectday20.me/tags/spark/">#Spark</a>
+        
+        
+    </p>
+    <div class="space"></div>
+    <p>Suppose you have a table containing a column whose type is a map, then you want to count the number of empty and non-empty collections.</p>
+<p>A straightforward way would be:</p>
+<pre data-lang="SQL" style="background-color:#fdf6e3;color:#657b83;" class="language-SQL "><code class="language-SQL" data-lang="SQL"><span style="color:#859900;">SELECT COUNT</span><span>(</span><span style="color:#d33682;">*</span><span>) </span><span style="color:#859900;">FROM</span><span> some_table </span><span style="color:#859900;">WHERE</span><span> size(map_col) &gt; </span><span style="color:#6c71c4;">0</span><span>;
+</span><span style="color:#859900;">SELECT COUNT</span><span>(</span><span style="color:#d33682;">*</span><span>) </span><span style="color:#859900;">FROM</span><span> some_table </span><span style="color:#859900;">WHERE</span><span> size(map_col) &lt;= </span><span style="color:#6c71c4;">0 </span><span style="color:#859900;">or</span><span> size(map_col) </span><span style="color:#859900;">IS </span><span style="color:#b58900;">NULL</span><span>;
+</span></code></pre>
+<p>This is easy. But Spark will create two stages, scan <code>some_table</code> twice, although we human knows one single pass can compute all the results we want, Spark isn't smart enough to do that, or we human didn't make Spark smart enough.</p>
+<p>If the table is small, then scanning a table twice won't do any harm, the SQL query is easy to understand, this is even the recommended way. But if the table is derived from another table, very large, and column is nested, then scanning only once is more attracting.</p>
+<p>A small trick to do this is using <code>CASE WHEN</code>:</p>
+<pre data-lang="SQL" style="background-color:#fdf6e3;color:#657b83;" class="language-SQL "><code class="language-SQL" data-lang="SQL"><span style="color:#859900;">SELECT SUM</span><span>(</span><span style="color:#859900;">CASE WHEN</span><span> size(map_col) &gt; </span><span style="color:#6c71c4;">0 </span><span style="color:#859900;">THEN </span><span style="color:#6c71c4;">1 </span><span style="color:#859900;">ELSE </span><span style="color:#6c71c4;">0 </span><span style="color:#859900;">END</span><span>) as non_empty_count, 
+</span><span>       </span><span style="color:#859900;">SUM</span><span>(</span><span style="color:#859900;">CASE WHEN</span><span> size(map_col) &gt; </span><span style="color:#6c71c4;">0 </span><span style="color:#859900;">THEN </span><span style="color:#6c71c4;">0 </span><span style="color:#859900;">ELSE </span><span style="color:#6c71c4;">1 </span><span style="color:#859900;">END</span><span>) as empty_count 
+</span><span style="color:#859900;">FROM</span><span> some_table;
+</span></code></pre>
+<p>This is not a Spark trick, but a SQL trick, so any SQL engine can benefit from it.</p>
+
+</main>
+
+</body>
+</html>

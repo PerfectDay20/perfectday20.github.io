@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Comparison of Parquet and ORC</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Comparison of Parquet and ORC</h1>
+    <p class="secondary">
+        
+        2022&#x2F;02&#x2F;21
+        
+
+        
+        
+        <a href="https://perfectday20.me/tags/spark/">#Spark</a>
+        
+        
+    </p>
+    <div class="space"></div>
+    <p>I'm using Spark3.2.1 to convert MongoDB BSON files to Parquet and ORC. To save the cost, I want to choose a best combination of data type + compression. Both the data file size and the data size scanned in queries should be small, because they will be saved in AWS S3 and queried in AWS Athena, which compute cost by data stored and scanned.</p>
+<p>Since BSON is binary Json, the data is highly nested. A sample would be:</p>
+<pre data-lang="json" style="background-color:#fdf6e3;color:#657b83;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">_id</span><span style="color:#839496;">&quot;</span><span>:{
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">a</span><span style="color:#839496;">&quot;</span><span>:</span><span style="color:#6c71c4;">1</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">b</span><span style="color:#839496;">&quot;</span><span>:</span><span style="color:#6c71c4;">2</span><span>,
+</span><span>    </span><span style="color:#93a1a1;">// ...,
+</span><span>  },
+</span><span>  </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">value</span><span style="color:#839496;">&quot;</span><span>:{
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">c</span><span style="color:#839496;">&quot;</span><span>: {},</span><span style="color:#93a1a1;">// Map&lt;String, Long&gt;
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">d</span><span style="color:#839496;">&quot;</span><span>: {},</span><span style="color:#93a1a1;">// Map&lt;String, Map&lt;String, Long&gt;&gt;
+</span><span>    </span><span style="color:#93a1a1;">// ... // hundreds of other columns
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>Different data will make a big difference on the comparison results. Below is just my own test result, you should do the test with your own data.</p>
+<h1 id="compression">Compression</h1>
+<p>Parquet and ORC supports many compression algorithms. Check <code>ParquetOptions</code> and <code>OrcOptions</code> for detail lists.</p>
+<pre data-lang="scala" style="background-color:#fdf6e3;color:#657b83;" class="language-scala "><code class="language-scala" data-lang="scala"><span style="color:#268bd2;">object</span><span style="color:#b58900;"> ParquetOptions </span><span>{
+</span><span>  </span><span style="color:#93a1a1;">// The parquet compression short names
+</span><span>  </span><span style="color:#586e75;">private </span><span style="color:#268bd2;">val shortParquetCompressionCodecNames </span><span>= </span><span style="color:#859900;">Map</span><span>(
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">none</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#859900;">CompressionCodecName</span><span>.</span><span style="color:#859900;">UNCOMPRESSED</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">uncompressed</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#859900;">CompressionCodecName</span><span>.</span><span style="color:#859900;">UNCOMPRESSED</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">snappy</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#859900;">CompressionCodecName</span><span>.</span><span style="color:#859900;">SNAPPY</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">gzip</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#859900;">CompressionCodecName</span><span>.</span><span style="color:#859900;">GZIP</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">lzo</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#859900;">CompressionCodecName</span><span>.</span><span style="color:#859900;">LZO</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">lz4</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#859900;">CompressionCodecName</span><span>.</span><span style="color:#859900;">LZ4</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">brotli</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#859900;">CompressionCodecName</span><span>.</span><span style="color:#859900;">BROTLI</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">zstd</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#859900;">CompressionCodecName</span><span>.</span><span style="color:#859900;">ZSTD</span><span>)
+</span><span>}
+</span><span>
+</span><span style="color:#268bd2;">object</span><span style="color:#b58900;"> OrcOptions </span><span>{
+</span><span>  </span><span style="color:#93a1a1;">// The ORC compression short names
+</span><span>  </span><span style="color:#586e75;">private </span><span style="color:#268bd2;">val shortOrcCompressionCodecNames </span><span>= </span><span style="color:#859900;">Map</span><span>(
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">none</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">NONE</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">uncompressed</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">NONE</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">snappy</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">SNAPPY</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">zlib</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">ZLIB</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">lzo</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">LZO</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">lz4</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">LZ4</span><span style="color:#839496;">&quot;</span><span>,
+</span><span>    </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">zstd</span><span style="color:#839496;">&quot;</span><span> -&gt; </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">ZSTD</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>}
+</span></code></pre>
+<p>The difference is that Parquet provides gzip while ORC provides zlib. <a href="https://dev.to/biellls/compression-clearing-the-confusion-on-zip-gzip-zlib-and-deflate-15g1">A good article to explain gzip and zlib.</a></p>
+<p>LZO needs extra libraries so I didn't test it. Below table shows different file size ratios compared with the smallest combination zlib + ORC. All the compression configs are default, such as compression level.</p>
+<table><thead><tr><th><strong>compression</strong></th><th><strong>Parquet</strong></th><th><strong>ORC</strong></th></tr></thead><tbody>
+<tr><td>none</td><td>2.32</td><td>1.39</td></tr>
+<tr><td>lz4</td><td>1.56</td><td>1.18</td></tr>
+<tr><td>snappy</td><td>1.53</td><td>1.16</td></tr>
+<tr><td>zstd</td><td>1.18</td><td>1.02</td></tr>
+<tr><td>gzip (zlib)</td><td>1.16</td><td>1.00</td></tr>
+</tbody></table>
+<img src="compression.png" width=600/>
+<h1 id="processing-time">Processing time</h1>
+<p>My app's logic is fairly simple, just parse and save. But ORC cost 3-4x the time of Parquet. Maybe that's because of the way ORC handles nested columns, or just simply because ORC wasn't optimized well enough compared to Parquet in Spark.</p>
+<h1 id="data-scanned-in-queries">Data scanned in queries</h1>
+<p><a href="https://parquet.apache.org/documentation/latest/">Parquet uses Dremel algorithm</a> to flatten the nested columns, while <a href="https://orc.apache.org/specification/ORCv1/">ORC just nests columns in columns</a>. So when read from a inner column, Parquet only reads the columns needed, while ORC needs to decompress the outer columns fully.</p>
+<p>A simple query in Athena can reveal this:</p>
+<p>The files used in the test: Parquet=376MB, ORC=319MB</p>
+<table><thead><tr><th>SQL</th><th>Parquet data scanned (MB)</th><th>ORC data scanned (MB)</th></tr></thead><tbody>
+<tr><td>select sum(value.a) from table;</td><td>1.6</td><td>303.94</td></tr>
+<tr><td>select sum(value.b) from table;</td><td>6.11</td><td>303.94</td></tr>
+<tr><td>select sum(element_at(value.c, 'd').e) from table;</td><td>97.14</td><td>303.94</td></tr>
+</tbody></table>
+<h1 id="conclusion">Conclusion</h1>
+<p>So, Parquet + gzip is good enough for me. The data size is sub-optimal, processing time is fast, data scanned is also small.</p>
+<p>Further optimization like row group size and data page size can also be tested and applied, but just for now it's enough to leave them to the default.</p>
+
+</main>
+
+</body>
+</html>

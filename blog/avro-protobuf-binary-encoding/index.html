@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Binary Encoding Comparison of Avro and Protocol Buffer</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Binary Encoding Comparison of Avro and Protocol Buffer</h1>
+    <p class="secondary">
+        
+        2022&#x2F;07&#x2F;11
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <p>Version used:
+<a href="https://avro.apache.org/docs/1.11.1/specification/">Apache Avro 1.11.1</a>
+<a href="https://protobuf.dev/programming-guides/proto3/">Protocol Buffer 3</a></p>
+<table><thead><tr><th>data type</th><th>Avro</th><th>Protobuf</th></tr></thead><tbody>
+<tr><td>null</td><td>zero bytes</td><td></td></tr>
+<tr><td>boolean</td><td>1 byte</td><td>as int32, 1 byte</td></tr>
+<tr><td>int, long</td><td>variable-length zig-zag</td><td>int32(two's complement), sint32(zig-zag), uint32, fixed32, sfixed32</td></tr>
+<tr><td>float</td><td>4 bytes</td><td>4 bytes</td></tr>
+<tr><td>double</td><td>8 bytes</td><td>8 bytes</td></tr>
+<tr><td>bytes</td><td>a long + bytes</td><td>varint + bytes</td></tr>
+<tr><td>string</td><td>a long + UTF-8</td><td>varint + UTF-8</td></tr>
+<tr><td>record/message</td><td>encoded fields, no length/separator</td><td><a href="https://en.wikipedia.org/wiki/Type%E2%80%93length%E2%80%93value">Tag-Length-Value</a>, varint key: <code>(field_number &lt;&lt; 3) | wire_type</code></td></tr>
+<tr><td>enum</td><td>as int</td><td>as int32</td></tr>
+<tr><td>array/repeated</td><td>blocks (a long + items)</td><td>primitive numeric types are packed:  varint + items; other types just repeats</td></tr>
+<tr><td>map</td><td>blocks (a long + items)</td><td>as repeated nested tuple</td></tr>
+<tr><td>fixed</td><td>fixed size bytes</td><td></td></tr>
+<tr><td>union</td><td>an int (position) + value</td><td></td></tr>
+</tbody></table>
+<p>For scalar types, Avro and ProtoBuf use similar encodings;
+while for complex types(record/message, array/repeated, map), Avro uses a packed encoding,
+Protobuf just writes the k-v multiple times.</p>
+<p>Most of the differences come from this design choice:</p>
+<ul>
+<li>Avro encode every record fields (so no need for field name/index as keys)</li>
+<li>Protobuf only encode non-default fields for <code>singular</code> fields, and all fields for <code>optional</code> fields.</li>
+</ul>
+<p>This make Protobuf more suitable for spare messages.</p>
+<p>Other differences:</p>
+<h3 id="nullable">Nullable</h3>
+<p>Avro uses <code>union</code> to support nullable values.
+Then if a type is nullable, every encoded value will contain 1 byte as the type position in
+<code>union</code>'s schema.</p>
+<p>For Protobuf, we can use <code>optional</code> to mimic the null value.</p>
+<h3 id="default-values">Default values</h3>
+<p>In Avro, a default value is only used when reading instances that lack the field for schema evolution purposes.
+The presence of a default value does not make the field optional at encoding time.
+Avro encodes a field even if its value is equal to its default.</p>
+<p>Protobuf3 only supports default zero-false-empty values.</p>
+<p>So if we have a very sparse record/message that defines 100 nullable fields, using <code>union</code> in Avro and <code>optional</code> in Protobuf,
+how an instance is encoded when all fields are null?</p>
+<p>Avro: 100 position <code>union</code> index, so 100 bytes.</p>
+<p>Protobuf: no fields are encoded.</p>
+<h3 id="submessages">Submessages</h3>
+<p>Because Protobuf uses Tag-Length-Value, so nested submessage fields must use the <code>LEN</code> wire type
+for the parser to know how long the encoded field is.</p>
+<p>While Avro encodes all submessage's fields, no length is needed.</p>
+<h3 id="field-presence">Field presence</h3>
+<p>Avro record fields are always present in wire format.
+Protobuf has more complicated <a href="https://protobuf.dev/programming-guides/field_presence/">field presence</a>.</p>
+<table><thead><tr><th></th><th>singular</th><th>optional</th></tr></thead><tbody>
+<tr><td>not write any value</td><td>not-encode</td><td>not-encode</td></tr>
+<tr><td>write default value</td><td>not-encode</td><td>encode</td></tr>
+<tr><td>write non-default value</td><td>encode</td><td>encode</td></tr>
+</tbody></table>
+<hr />
+<p>So when to use which?</p>
+<ul>
+<li>If most of the record fields are always default or null or empty, use ProtoBuf.</li>
+<li>If most of the record fields are always present and non-default, use Avro.</li>
+<li>For other cases, test before decide.</li>
+</ul>
+
+</main>
+
+</body>
+</html>

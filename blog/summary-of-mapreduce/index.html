@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Summary of MapReduce</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Summary of MapReduce</h1>
+    <p class="secondary">
+        
+        2021&#x2F;12&#x2F;01
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <p>Many computation tasks can be expressed in map tasks and reduce tasks.</p>
+<p>The system takes care of parallelization, scheduling, failure handling, so we can focus on the computation logic and utilize distributed system easily.</p>
+<p>The MapReduce system contains two components: master and worker. Master needs to schedule map and reduce tasks to workers, transfer task info between them, reschedule failed tasks, monitor job states. Workers receive tasks and do the actual computation, report states to master.</p>
+<p>The cluster is both used for computing and data warehouse, so Master can schedule map tasks along side the data to conserve network bandwidth. Because network bandwidth is scarce resource.</p>
+<p>Map tasks convert input to intermediate key-value pairs in memory buffer, then periodically write to disk. Each map task will produce R(the number of reduce tasks) intermediate files. (So totally M*R files will be created, Spark has an optimization on this)</p>
+<p>Master passes the intermediate files info to reducer, reducer pulls intermediate data from mapper, sorts data by keys then iterates the values, reduce values to the final result.</p>
+<p>The number of map and reduce tasks should be much larger than the number of workers for better dynamic load balancing and fast recovery(one worker's tasks can be shared by more workers if task number is larger).</p>
+<p>Backup tasks for straggler tasks: schedule tasks when a MapReduce job is close to finish, using no more than a few percent of resource. (Different workers can behave dramatically different, so using backup tasks can cut off long-tail tasks that due to resource deficiency)</p>
+<p>Other refinements:</p>
+<ul>
+<li>User provided partitioner</li>
+<li>data is in increasing order within partition</li>
+<li>combiner merges data within mapper</li>
+<li>option to skip bad input records, rely on Master</li>
+<li>local execution for debug</li>
+<li>status monitoring</li>
+<li>counter for debug and sanity check, rely on Master</li>
+</ul>
+<blockquote>
+<p>[R]stricting the programming model makes it easy to parallelize and distribute computations and to make such computations fault-tolerant.</p>
+</blockquote>
+
+</main>
+
+</body>
+</html>

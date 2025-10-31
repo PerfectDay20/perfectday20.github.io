@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | How to Drop Array&#x2F;Map Nested Struct Fields in Databricks</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>How to Drop Array&#x2F;Map Nested Struct Fields in Databricks</h1>
+    <p class="secondary">
+        
+        2025&#x2F;06&#x2F;11
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <h1 id="environment">Environment</h1>
+<p>Databricks Runtime 16.4LTS</p>
+<h1 id="the-problem">The problem</h1>
+<p>Just as the title says, sometimes we need to drop some highly nested fields in a Delta Lake table. If the fields only belong to nested structs, then just separating the path by dots is enough (for example <code>a.b.c.d</code>). But when fields are nested in an array or map, then the SQLs are not very intuitive to write.</p>
+<p>The official documentations of Delta Lake and Databricks didn’t provide good examples of how to drop a nested struct field within an Array. Though it provides an article about how to do it with the Map type <a href="https://kb.databricks.com/dbsql/executing-drop-field-inside-a-nested-column-gives-an-invalid_field_name-error">here</a>.</p>
+<p>In that article, the correct SQL query to drop the <code>b</code> in <code>data map&lt;int, map&lt;int, struct&lt;a: int, b: string&gt;&gt;&gt;</code> is <code>DROP COLUMN data.value.value.b</code>. The interesting part is where does the <code>value</code> field come from. Yes we all know a map contains key-value pairs and the <code>value</code> comes from the value part of the map, but no documentation mentioned the corresponding name.</p>
+<p>Then what if we need to delete a field in a key struct? It’s easy to guess and the answer is using <code>key</code> as in <code>data.key.key.foo</code>.</p>
+<p>From the Databricks UI table overview tab, we can see a Map structure contains <code>keys</code> and <code>values</code> fields, just corresponding the <code>key</code> and <code>value</code> in above SQLs, which is just a coincidence.</p>
+<div style="text-align: center;">
+  <img src="map-schema.png" width="400"/>
+</div>
+<p>Why this is a coincidence? Because If we check the structure of a <code>array&lt;array&lt;struct&lt;a: int, b: string&gt;&gt;&gt;</code>, we’ll get items:</p>
+<div style="text-align: center;">
+  <img src="array-schema.png" width="400"/>
+</div>
+<p>Then if we remove the plural form and use <code>DROP COLUMN data.item.item.a</code>, an error will occur.</p>
+<p>So the keyword is not <code>item</code> for Array.</p>
+<p>The true source of the internal field name lies in <a href="https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#nested-types">Parquet’s logical type documentation</a>, where List(alias Array) has an <code>element</code> field, and Map has <code>key</code> and <code>value</code> fields. So the right keyword for Array is <code>element</code>.</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>&lt;list-repetition&gt; group &lt;name&gt; (LIST) {
+</span><span>  repeated group list {
+</span><span>    &lt;element-repetition&gt; &lt;element-type&gt; element;
+</span><span>  }
+</span><span>}
+</span><span>
+</span><span>&lt;map-repetition&gt; group &lt;name&gt; (MAP) {
+</span><span>  repeated group key_value {
+</span><span>    required &lt;key-type&gt; key;
+</span><span>    &lt;value-repetition&gt; &lt;value-type&gt; value;
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<h1 id="full-examples">Full examples</h1>
+<h2 id="drop-map-struct-fields">Drop map struct fields</h2>
+<pre data-lang="sql" style="background-color:#fdf6e3;color:#657b83;" class="language-sql "><code class="language-sql" data-lang="sql"><span style="color:#859900;">CREATE OR REPLACE TABLE </span><span style="color:#b58900;">nested_table1</span><span> (id </span><span style="color:#268bd2;">int</span><span>, data map&lt;</span><span style="color:#268bd2;">int</span><span>, map&lt;struct&lt;c: </span><span style="color:#268bd2;">int</span><span>, d: string&gt;, struct&lt;a: </span><span style="color:#268bd2;">int</span><span>, b: string&gt;&gt;&gt;);
+</span><span>
+</span><span style="color:#859900;">INSERT INTO</span><span> nested_table1
+</span><span style="color:#859900;">SELECT
+</span><span>  </span><span style="color:#6c71c4;">111 </span><span>AS id,
+</span><span>  map(</span><span style="color:#6c71c4;">2</span><span>, map(struct(</span><span style="color:#6c71c4;">4</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">aaa</span><span style="color:#839496;">&quot;</span><span>), struct(</span><span style="color:#6c71c4;">5</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">bbb</span><span style="color:#839496;">&quot;</span><span>))) AS data;
+</span><span>  
+</span><span style="color:#859900;">ALTER TABLE </span><span>nested_table1 </span><span style="color:#859900;">SET</span><span> TBLPROPERTIES (</span><span style="color:#839496;">&#39;</span><span style="color:#2aa198;">delta.columnMapping.mode</span><span style="color:#839496;">&#39; </span><span>= </span><span style="color:#839496;">&#39;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&#39;</span><span>);
+</span><span>
+</span><span style="color:#859900;">ALTER TABLE </span><span>nested_table1 DROP COLUMNS (</span><span style="color:#cb4b16;">data</span><span>.</span><span style="color:#cb4b16;">value</span><span>.</span><span style="color:#cb4b16;">key</span><span>.</span><span style="color:#cb4b16;">d</span><span>, </span><span style="color:#cb4b16;">data</span><span>.</span><span style="color:#cb4b16;">value</span><span>.</span><span style="color:#cb4b16;">value</span><span>.</span><span style="color:#cb4b16;">a</span><span>);
+</span><span>
+</span><span style="color:#859900;">SELECT </span><span style="color:#d33682;">* </span><span style="color:#859900;">FROM</span><span> nested_table1;
+</span></code></pre>
+<h2 id="drop-array-struct-fields">Drop array struct fields</h2>
+<pre data-lang="sql" style="background-color:#fdf6e3;color:#657b83;" class="language-sql "><code class="language-sql" data-lang="sql"><span style="color:#859900;">CREATE OR REPLACE TABLE </span><span style="color:#b58900;">nested_table2</span><span> (id </span><span style="color:#268bd2;">int</span><span>, data array&lt;array&lt;struct&lt;a: </span><span style="color:#268bd2;">int</span><span>, b: string&gt;&gt;&gt;);
+</span><span>
+</span><span style="color:#859900;">INSERT INTO</span><span> nested_table2
+</span><span style="color:#859900;">SELECT
+</span><span>  </span><span style="color:#6c71c4;">111 </span><span>AS id,
+</span><span>  array(array(struct(</span><span style="color:#6c71c4;">4</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">aaa</span><span style="color:#839496;">&quot;</span><span>), struct(</span><span style="color:#6c71c4;">5</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">bbb</span><span style="color:#839496;">&quot;</span><span>))) AS data;
+</span><span>
+</span><span style="color:#859900;">ALTER TABLE </span><span>nested_table2 </span><span style="color:#859900;">SET</span><span> TBLPROPERTIES (</span><span style="color:#839496;">&#39;</span><span style="color:#2aa198;">delta.columnMapping.mode</span><span style="color:#839496;">&#39; </span><span>= </span><span style="color:#839496;">&#39;</span><span style="color:#2aa198;">name</span><span style="color:#839496;">&#39;</span><span>);
+</span><span>
+</span><span style="color:#859900;">ALTER TABLE </span><span>nested_table2 DROP COLUMN </span><span style="color:#cb4b16;">data</span><span>.</span><span style="color:#cb4b16;">element</span><span>.</span><span style="color:#cb4b16;">element</span><span>.</span><span style="color:#cb4b16;">a</span><span>;
+</span><span>
+</span><span style="color:#859900;">SELECT </span><span style="color:#d33682;">* </span><span style="color:#859900;">FROM</span><span> nested_table2;
+</span></code></pre>
+
+</main>
+
+</body>
+</html>

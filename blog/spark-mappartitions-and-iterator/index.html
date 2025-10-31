@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Spark mapPartitions and Iterator</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Spark mapPartitions and Iterator</h1>
+    <p class="secondary">
+        
+        2022&#x2F;06&#x2F;01
+        
+
+        
+        
+        <a href="https://perfectday20.me/tags/spark/">#Spark</a>
+        
+        <a href="https://perfectday20.me/tags/scala/">#Scala</a>
+        
+        <a href="https://perfectday20.me/tags/java/">#Java</a>
+        
+        
+    </p>
+    <div class="space"></div>
+    <p>In Spark, <code>mapPartitions</code> is a good alternative of <code>map</code> if you need to do some heavy initialization for some processing and only want to init it only once for each partition, not each record.</p>
+<p>But there exists a small detail, as shown in the method signature:</p>
+<pre data-lang="scala" style="background-color:#fdf6e3;color:#657b83;" class="language-scala "><code class="language-scala" data-lang="scala"><span style="color:#268bd2;">def </span><span style="color:#b58900;">mapPartitions</span><span>[</span><span style="color:#859900;">U : Encoder</span><span>](</span><span style="color:#268bd2;">func</span><span>: </span><span style="color:#859900;">Iterator</span><span>[</span><span style="color:#859900;">T</span><span>] </span><span style="color:#859900;">=&gt; Iterator</span><span>[</span><span style="color:#859900;">U</span><span>]): </span><span style="color:#859900;">Dataset</span><span>[</span><span style="color:#859900;">U</span><span>]
+</span></code></pre>
+<p>This method takes a function which convert an iterator to another.</p>
+<p>In Scala, iterator is versatile enough to have many transform methods, such as <code>map</code>, <code>flatMap</code>, <code>filter</code>.
+An important aspect of these methods is that they all will only create a lazy view on the iterator, instead of creating an intermediate collection to hold the transformed data.
+So these methods make the processing both smooth and memory efficient.
+Most of the time the Spark user may not even notice this lazy view characteristic.</p>
+<p>But in Java, iterator is not that powerful. Spark provides a <code>mapPartition</code> in Java version:</p>
+<pre data-lang="Scala" style="background-color:#fdf6e3;color:#657b83;" class="language-Scala "><code class="language-Scala" data-lang="Scala"><span style="color:#268bd2;">def </span><span style="color:#b58900;">mapPartitions</span><span>[</span><span style="color:#859900;">U</span><span>](</span><span style="color:#268bd2;">f</span><span>: </span><span style="color:#859900;">MapPartitionsFunction</span><span>[</span><span style="color:#859900;">T</span><span>, </span><span style="color:#859900;">U</span><span>], </span><span style="color:#268bd2;">encoder</span><span>: </span><span style="color:#859900;">Encoder</span><span>[</span><span style="color:#859900;">U</span><span>]): </span><span style="color:#859900;">Dataset</span><span>[</span><span style="color:#859900;">U</span><span>]
+</span></code></pre>
+<p>Then this <code>MapPartitionsFunction</code> also takes an iterator and return an iterator.</p>
+<pre data-lang="Java" style="background-color:#fdf6e3;color:#657b83;" class="language-Java "><code class="language-Java" data-lang="Java"><span style="color:#586e75;">public </span><span style="color:#268bd2;">interface </span><span style="color:#b58900;">MapPartitionsFunction</span><span>&lt;</span><span style="color:#268bd2;">T</span><span>, </span><span style="color:#268bd2;">U</span><span>&gt; </span><span style="color:#859900;">extends </span><span style="color:#268bd2;">Serializable </span><span>{
+</span><span>  </span><span style="color:#859900;">Iterator</span><span>&lt;</span><span style="color:#859900;">U</span><span>&gt; </span><span style="color:#b58900;">call</span><span>(</span><span style="color:#859900;">Iterator</span><span>&lt;</span><span style="color:#859900;">T</span><span>&gt; </span><span style="color:#268bd2;">input</span><span>) </span><span style="color:#859900;">throws Exception</span><span>;
+</span><span>}
+</span></code></pre>
+<p>Java's iterator doesn't have any of <code>map</code>, <code>flatMap</code>, <code>filter</code>. So for new Java programmers in Spark world, they may first convert the iterator to a collection, do the transform, the return the collection's iterator.
+This works good on small dataset, but in large dataset, this may cause OOM.</p>
+<p>Why? Because <code>mapPartitions</code> will use the input iterator to process each record of a partition in memory, if you turn this iterator into a collection, then the whole partition needs to be hold by the heap, which may cause the trouble.</p>
+<p>A possible solution is using <code>org.apache.commons.collections4.IteratorUtils</code>, such as <code>transformedIterator</code>, <code>filteredIterator</code>. Alternatively, you can write your own lazy transform iterator wrapper.</p>
+<hr />
+<p>So what's the takeaway from this issue?</p>
+<ul>
+<li>For API users, it's not enough to use a method correctly solely relying on the method signature. You must understand the underlying logic.</li>
+<li>For API writers, providing same signature for different languages and retaining the same accessibility can be challenging.</li>
+</ul>
+
+</main>
+
+</body>
+</html>

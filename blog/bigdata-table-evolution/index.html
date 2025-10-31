@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | The Evolution of Big Data Table Management</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>The Evolution of Big Data Table Management</h1>
+    <p class="secondary">
+        
+        2025&#x2F;07&#x2F;02
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <p>This is just a summary of my understanding of how to organize bigdata in tables. So the level arrangement is rather random.</p>
+<h1 id="level-1">Level 1</h1>
+<p>No tables, just a bunch of files in a directory, read a single file or whole directory to process.</p>
+<ul>
+<li>Pros: easy to use, quick for testing.</li>
+<li>Cons: no optimizations.</li>
+</ul>
+<h1 id="level-1-5">Level 1.5</h1>
+<p>Hive style partitioned/bucketed directories.</p>
+<ul>
+<li>Pros: easy to understand, prune data with partitions.</li>
+<li>Cons: partition evolution is hard, file listing is slow in S3, and may reach API limits.</li>
+</ul>
+<h1 id="level-2">Level 2</h1>
+<p>Use Hive(or Glue...) metastore.</p>
+<ul>
+<li>Pros: one place to find and manage tables.</li>
+<li>Cons: same as Level 1.5.</li>
+</ul>
+<h1 id="level-2-5">Level 2.5</h1>
+<p>Zorder.</p>
+<ul>
+<li>Pros: more efficient for different filter combinations.</li>
+<li>Cons: not a table property, need to manually organize the data, write amplification.</li>
+</ul>
+<h1 id="level-3">Level 3</h1>
+<p>Table formats: Iceberg, Delta Lake, Hudi...</p>
+<ul>
+<li>Pros: ACID, schema evolution management, data updates, time travel, branch/tags...</li>
+<li>Cons: lost control at file level, every task need to go through these table formats.</li>
+</ul>
+<h1 id="level-3-5">Level 3.5</h1>
+<p>Liquid clustering, auto clustering based on query usage, incremental.</p>
+<p>Auto compaction on Tables.</p>
+<ul>
+<li>Pros: more efficient on query filter, automatic optimization.</li>
+<li>Cons: closed source, vendor lock-in.</li>
+</ul>
+<hr />
+<h1 id="references">References</h1>
+<ul>
+<li><a href="https://www.dremio.com/blog/how-z-ordering-in-apache-iceberg-helps-improve-performance/">https://www.dremio.com/blog/how-z-ordering-in-apache-iceberg-helps-improve-performance/</a></li>
+<li><a href="https://docs.databricks.com/aws/en/delta/clustering">https://docs.databricks.com/aws/en/delta/clustering</a></li>
+<li><a href="https://delta.io/blog/liquid-clustering/">https://delta.io/blog/liquid-clustering/</a></li>
+<li><a href="https://delta.io/blog/2023-06-03-delta-lake-z-order/">https://delta.io/blog/2023-06-03-delta-lake-z-order/</a></li>
+<li><a href="https://aws.amazon.com/blogs/aws/aws-glue-data-catalog-now-supports-automatic-compaction-of-apache-iceberg-tables/">https://aws.amazon.com/blogs/aws/aws-glue-data-catalog-now-supports-automatic-compaction-of-apache-iceberg-tables/</a></li>
+</ul>
+
+</main>
+
+</body>
+</html>

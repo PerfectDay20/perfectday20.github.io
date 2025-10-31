@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="no desc">
+    <title>PerfectDay20&#x27;s Blog | Export Prometheus metrics for Databricks and Spark</title>
+    
+    <link rel="stylesheet" href="https://perfectday20.me/bamboo.css?h=0980078781ff97d22bd9">
+    
+</head>
+<body>
+    
+<header class="space">
+    <a href="https:&#x2F;&#x2F;perfectday20.me">&LeftArrow; Home</a>
+</header>
+
+    
+<main>
+    <h1>Export Prometheus metrics for Databricks and Spark</h1>
+    <p class="secondary">
+        
+        2025&#x2F;03&#x2F;15
+        
+
+        
+    </p>
+    <div class="space"></div>
+    <h1 id="environments">Environments</h1>
+<p><a href="https://docs.databricks.com/aws/en/release-notes/runtime/15.4lts">Databricks Runtime 15.4 LTS</a></p>
+<p>Apache Spark 3.5.5 with YARN</p>
+<h1 id="goals">Goals</h1>
+<p>Check Spark jobs and clusters status in Grafana with Prometheus backend.</p>
+<h1 id="pull-or-push">Pull or push</h1>
+<p>There are 2 ways to get the Spark metrics into Prometheus, push or pull. Officially the Prometheus recommends <a href="https://prometheus.io/docs/introduction/faq/#why-do-you-pull-rather-than-push">pull</a>. But there are some cases that pushing is simpler, such as:</p>
+<ul>
+<li>short-time batch jobs</li>
+<li>long-running streaming jobs, but each restart will change the cluster id which changes the scrape URL, and there is no Consul-like service discovery tools</li>
+</ul>
+<p>But actually by using the push method, we're pushing the metrics to the PushGateway, then Prometheus is still pulling from it.</p>
+<h1 id="the-pull-way">The pull way</h1>
+<p>Spark already supports exposing metrics in Prometheus format, all we need to do is enabling some configs.</p>
+<p>In the last lines of the <a href="https://github.com/apache/spark/blob/d03c6806102bbcfe852ab7c26f292662404d59f7/conf/metrics.properties.template#L206-L210">conf/metrics.properties.template</a> there are example configurations for PrometheusServlet.
+This servlet will add an endpoint to the Spark UI, then Prometheus can scrape it.</p>
+<p>We can enable this servlet by one of below ways:</p>
+<ul>
+<li>copy this template to metrics.properties and uncomment these configs</li>
+<li>add prefix <code>spark.metrics.conf.</code> to the configs then pass to SparkSession (For prefix, see <a href="https://github.com/apache/spark/blob/d03c6806102bbcfe852ab7c26f292662404d59f7/core/src/main/scala/org/apache/spark/metrics/MetricsConfig.scala#L59">MetricsConfig</a>)</li>
+</ul>
+<p>I prefer the second way since it's flexible and easier to do in Databricks.</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span># default configs in conf/metrics.properties.template
+</span><span>*.sink.prometheusServlet.class=org.apache.spark.metrics.sink.PrometheusServlet
+</span><span>*.sink.prometheusServlet.path=/metrics/prometheus
+</span><span>master.sink.prometheusServlet.path=/metrics/master/prometheus
+</span><span>applications.sink.prometheusServlet.path=/metrics/applications/prometheus
+</span></code></pre>
+<p>There are some ceveats about these configs.</p>
+<ol>
+<li>the doc in the template shows the config syntax is <code>[instance].sink|source.[name].[options]=[value]</code>, then the <code>prometheusServelet</code> part is the name. But for <code>servlet</code> and <code>prometheusServlet</code>, this name can't be changed to other custom names such as <code>testPrometheus</code>, beacuase they are hardcoded in <a href="https://github.com/apache/spark/blob/d03c6806102bbcfe852ab7c26f292662404d59f7/core/src/main/scala/org/apache/spark/metrics/MetricsSystem.scala#L208">MetricsSystem</a>. Only these specific names will enable the servlets.</li>
+</ol>
+<p>While other sinks, for example Slf4jSink, we can choose custom names, such as <code>spark.metrics.conf.executor.sink.mySlf4jSink.class</code>.
+This difference is confusing when I first configured them.</p>
+<ol start="2">
+<li>from the syntax of the last 2 configs <code>master.sink.prometheusServlet.path</code> and <code>applications.sink.prometheusServlet.path</code>, <code>master</code> and <code>applications</code> here are the components of the <a href="https://spark.apache.org/docs/3.5.5/spark-standalone.html">Standalone</a> cluster. Since I use YARN or Databricks, these 2 configs are not needed.</li>
+</ol>
+<p>The PrometheusServlet only enables the driver metrics. To enable executor metrics, we need to set <code>spark.ui.prometheus.enabled=true</code>. Executors will send their metrics through heartbeats to driver, then Spark UI will show them at URL path <code>/metrics/executors/prometheus</code>.</p>
+<p>This URL path is hardcoded, which is not like the config <code>*.sink.prometheusServlet.path=/metrics/prometheus</code> where we can change the path, yet another inconsistency.</p>
+<p>Some other useful configs(with <code>spark.metrics.conf.</code> prefix):</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span># add JVM metrics
+</span><span>spark.metrics.conf.*.source.jvm.class org.apache.spark.metrics.source.JvmSource
+</span><span>
+</span><span># use app name instead of app id as metrics prefix 
+</span><span>spark.metrics.namespace ${spark.app.name}
+</span></code></pre>
+<h2 id="urls-to-scrape">URLs to scrape</h2>
+<h3 id="yarn">YARN</h3>
+<p>So after these configs are set, we can scrape the metrics from URL of YARN:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>http://nas.home.arpa:8088/proxy/application_1741442944746_0008/metrics/prometheus
+</span><span>http://nas.home.arpa:8088/proxy/application_1741442944746_0008/metrics/executors/prometheus
+</span></code></pre>
+<h3 id="databricks">Databricks</h3>
+<p>The Spark UI URLs for Databricks cluster are hard to find and not well documented, yet I still found them in this great <a href="https://medium.com/@flyws1993/monitoring-databricks-clusters-with-prometheus-consul-f06be84bcf9f">Medium blog</a>:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>https://&#39;${WORKSPACE}&#39;/driver-proxy-api/o/&#39;{ORG_ID}&#39;/&#39;${DB_CLUSTER_ID}&#39;/40001/metrics/prometheus
+</span><span>https://&#39;${WORKSPACE}&#39;/driver-proxy-api/o/&#39;{ORG_ID}&#39;/&#39;${DB_CLUSTER_ID}&#39;/40001/metrics/executors/prometheus
+</span></code></pre>
+<p>There is a <code>40001</code> in the URL, that's the <code>spark.ui.port</code> set default by Databricks.</p>
+<p>Metric examples:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>metrics_org_example_ScalaMain_driver_BlockManager_disk_diskSpaceUsed_MB_Number{type=&quot;gauges&quot;} 0
+</span><span>metrics_org_example_ScalaMain_driver_BlockManager_disk_diskSpaceUsed_MB_Value{type=&quot;gauges&quot;} 0
+</span><span>metrics_org_example_ScalaMain_driver_BlockManager_memory_maxMem_MB_Number{type=&quot;gauges&quot;} 1098
+</span><span>metrics_org_example_ScalaMain_driver_BlockManager_memory_maxMem_MB_Value{type=&quot;gauges&quot;} 1098
+</span><span>metrics_org_example_ScalaMain_driver_BlockManager_memory_maxOffHeapMem_MB_Number{type=&quot;gauges&quot;} 0
+</span><span>...
+</span></code></pre>
+<h1 id="the-push-way">The push way</h1>
+<p>As shown in the scape URLs above, there are application_id or DB_CLUSTER_ID part in them. Even for the long-running Spark structured streaming jobs, when jobs restart, URLs are changed.
+If you have a service discovery tool then you can let the job register the correct URLs to the Prometheus.
+If not, then you may choose the push way.</p>
+<p>To push these metrics, we need to convert these metrics to the Prometheus format, which means creating Gauge objects with Prometheus java client.</p>
+<h2 id="convert-driver-metrics">Convert driver metrics</h2>
+<p>Spark use Dropwizard metrics library and the driver metrics are registered in <code>com.codahale.metrics.MetricRegistry</code> instance.
+Fortunately Dropwizard is popular enough to have Promethus created a library to convert them. See <code>simpleclient_dropwizard</code> before 1.0.0 and <code>prometheus-metrics-instrumentation-dropwizard</code> or <code>prometheus-metrics-instrumentation-dropwizard5</code> after 1.0.0.</p>
+<p>The <a href="https://github.com/prometheus/client_java/tree/simpleclient?tab=readme-ov-file#dropwizardexports-collector">conversion</a> is very simple, just one line:</p>
+<pre data-lang="java" style="background-color:#fdf6e3;color:#657b83;" class="language-java "><code class="language-java" data-lang="java"><span style="color:#859900;">new DropwizardExports</span><span>(metricRegistry).</span><span style="color:#b58900;">register</span><span>();
+</span></code></pre>
+<p>But to get the MetricRegistry, we need to use the reflection, such as:</p>
+<pre data-lang="scala" style="background-color:#fdf6e3;color:#657b83;" class="language-scala "><code class="language-scala" data-lang="scala"><span style="color:#268bd2;">object</span><span style="color:#b58900;"> RegistryExporter </span><span>{
+</span><span>  </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">getMetricRegistry</span><span>: </span><span style="color:#859900;">MetricRegistry </span><span>= {
+</span><span>    </span><span style="color:#268bd2;">val field </span><span>= classOf[</span><span style="color:#859900;">MetricsSystem</span><span>].getDeclaredField(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">registry</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>    field.setAccessible(</span><span style="color:#b58900;">true</span><span>)
+</span><span>    field.get(</span><span style="color:#859900;">SparkEnv</span><span>.get.metricsSystem).asInstanceOf[</span><span style="color:#859900;">MetricRegistry</span><span>]
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>Note: <code>MetricsSystem</code> is private to Spark, so we need to place this <code>RegistryExporter</code> within Spark's package such as <code>org.apache.spark</code>.</p>
+<h2 id="convert-executor-metrics">Convert executor metrics</h2>
+<p>Although both driver and executor metrics are exposed in the Spark UI URLs, they are created by different mechanisms.
+The executor metrics are not created by Dropwizard or any other metrics library, they are just joined strings created in <a href="https://github.com/apache/spark/blob/d03c6806102bbcfe852ab7c26f292662404d59f7/core/src/main/scala/org/apache/spark/status/api/v1/PrometheusResource.scala">PrometheusResource</a>.
+So to convert these strings into Prometheus Gauge objects, we need to do it manually, such as this:</p>
+<pre data-lang="scala" style="background-color:#fdf6e3;color:#657b83;" class="language-scala "><code class="language-scala" data-lang="scala"><span style="color:#268bd2;">object</span><span style="color:#b58900;"> ExecutorPrometheusSource </span><span>{
+</span><span>  </span><span style="color:#586e75;">private </span><span style="color:#268bd2;">var prefix</span><span>: </span><span style="color:#859900;">String </span><span>= </span><span style="color:#d33682;">_
+</span><span>  </span><span style="color:#586e75;">private lazy </span><span style="color:#268bd2;">val rddBlocks</span><span>: </span><span style="color:#859900;">Gauge </span><span>= createGauge(</span><span style="color:#859900;">s</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">${</span><span>prefix</span><span style="color:#2aa198;">}rddBlocks</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>  </span><span style="color:#586e75;">private lazy </span><span style="color:#268bd2;">val memoryUsed</span><span>: </span><span style="color:#859900;">Gauge </span><span>= createGauge(</span><span style="color:#859900;">s</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">${</span><span>prefix</span><span style="color:#2aa198;">}memoryUsed_bytes</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>...
+</span><span>...
+</span><span>  </span><span style="color:#586e75;">private lazy </span><span style="color:#268bd2;">val MinorGCTime</span><span>: </span><span style="color:#859900;">Gauge </span><span>= createGauge(</span><span style="color:#859900;">s</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">${</span><span>prefix</span><span style="color:#2aa198;">}MinorGCTime_seconds_total</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>  </span><span style="color:#586e75;">private lazy </span><span style="color:#268bd2;">val MajorGCTime</span><span>: </span><span style="color:#859900;">Gauge </span><span>= createGauge(</span><span style="color:#859900;">s</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">${</span><span>prefix</span><span style="color:#2aa198;">}MajorGCTime_seconds_total</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>
+</span><span>  </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">register</span><span>(</span><span style="color:#268bd2;">spark</span><span>: </span><span style="color:#859900;">SparkSession</span><span>): </span><span style="color:#268bd2;">Unit </span><span>= {
+</span><span>    </span><span style="color:#268bd2;">val field </span><span>= classOf[</span><span style="color:#859900;">SparkContext</span><span>].getDeclaredField(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">_statusStore</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>    field.setAccessible(</span><span style="color:#b58900;">true</span><span>)
+</span><span>    </span><span style="color:#268bd2;">val store </span><span>= field.get(spark.sparkContext).asInstanceOf[</span><span style="color:#859900;">AppStatusStore</span><span>]
+</span><span>
+</span><span>    prefix = spark.sparkContext.appName + </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">_executor_</span><span style="color:#839496;">&quot;
+</span><span>
+</span><span>    </span><span style="color:#268bd2;">val appId </span><span>= store.applicationInfo().id
+</span><span>    </span><span style="color:#268bd2;">val appName </span><span>= store.applicationInfo().name
+</span><span>    store.executorList(</span><span style="color:#b58900;">true</span><span>).foreach { </span><span style="color:#268bd2;">executor =&gt;
+</span><span>      </span><span style="color:#268bd2;">val executorId </span><span>= executor.id
+</span><span>
+</span><span>      rddBlocks.labels(appId, appName, executorId).set(executor.rddBlocks)
+</span><span>      memoryUsed.labels(appId, appName, executorId).set(executor.memoryUsed)
+</span><span>...
+</span><span>...
+</span><span>      executor.peakMemoryMetrics.foreach { </span><span style="color:#268bd2;">m =&gt;
+</span><span>...
+</span><span>...
+</span><span>        </span><span style="color:#859900;">MinorGCTime</span><span>.labels(appId, appName, executorId).set(m.getMetricValue(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">MinorGCTime</span><span style="color:#839496;">&quot;</span><span>) * </span><span style="color:#6c71c4;">0.001</span><span>)
+</span><span>        </span><span style="color:#859900;">MajorGCTime</span><span>.labels(appId, appName, executorId).set(m.getMetricValue(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">MajorGCTime</span><span style="color:#839496;">&quot;</span><span>) * </span><span style="color:#6c71c4;">0.001</span><span>)
+</span><span>      }
+</span><span>    }
+</span><span>  }
+</span><span>
+</span><span>  </span><span style="color:#586e75;">private </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">createGauge</span><span>(</span><span style="color:#268bd2;">name</span><span>: </span><span style="color:#859900;">String</span><span>): </span><span style="color:#859900;">Gauge </span><span>= {
+</span><span>    </span><span style="color:#859900;">Gauge</span><span>.build().name(name)
+</span><span>      .labelNames(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">application_id</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">application_name</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">executor_id</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>      .help(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">created by ExecutorSource</span><span style="color:#839496;">&quot;</span><span>)
+</span><span>      .register()
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>Note: same as above, we need to place this code with Spark's package and use reflection to access private fields.</p>
+<h1 id="add-custom-metrics">Add custom metrics</h1>
+<p>All the metrics above are Spark's native metrics.
+If we want to add some custom metrics, such as our own business related metrics, we need to do some instrumentations.</p>
+<p>There are some different ways to do it.</p>
+<h2 id="use-the-same-mechanism-as-the-spark-native-metrics">Use the same mechanism as the Spark native metrics</h2>
+<ol>
+<li>
+<p>Create a CustomSouce that extends <code>org.apache.spark.metrics.source.Source</code>.
+Because <code>org.apache.spark.metrics.source.Source</code> is private to Spark, we have to put our CustomSource within the Spark package.</p>
+</li>
+<li>
+<p>Create a <code>StreamingQueryListener</code> and update the metrics within <code>onQueryProgress</code> method.</p>
+</li>
+<li>
+<p>Register the source and listener</p>
+</li>
+</ol>
+<p>Example code of MyCustomSource.scala:</p>
+<pre data-lang="scala" style="background-color:#fdf6e3;color:#657b83;" class="language-scala "><code class="language-scala" data-lang="scala"><span style="color:#859900;">package </span><span style="color:#b58900;">org.apache.spark.metrics.source
+</span><span>
+</span><span style="color:#cb4b16;">import</span><span> com.codahale.metrics.{MetricRegistry, SettableGauge}
+</span><span style="color:#cb4b16;">import</span><span> org.apache.spark.SparkEnv
+</span><span style="color:#cb4b16;">import</span><span> org.apache.spark.sql.streaming.StreamingQueryListener
+</span><span>
+</span><span style="color:#268bd2;">object</span><span style="color:#b58900;"> MyCustomSource </span><span style="color:#859900;">extends </span><span style="color:#268bd2;">Source </span><span>{
+</span><span>  </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">sourceName</span><span>: </span><span style="color:#859900;">String </span><span>= </span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">MyCustomSource</span><span style="color:#839496;">&quot;
+</span><span>  </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">val metricRegistry</span><span>: </span><span style="color:#859900;">MetricRegistry </span><span>= </span><span style="color:#859900;">new MetricRegistry
+</span><span>  </span><span style="color:#268bd2;">val MY_METRIC_A</span><span>: </span><span style="color:#859900;">SettableGauge</span><span>[</span><span style="color:#268bd2;">Long</span><span>] = metricRegistry.gauge(</span><span style="color:#859900;">MetricRegistry</span><span>.name(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">a</span><span style="color:#839496;">&quot;</span><span>))
+</span><span>
+</span><span>}
+</span><span>
+</span><span style="color:#268bd2;">class</span><span style="color:#b58900;"> MyListener </span><span style="color:#859900;">extends </span><span style="color:#268bd2;">StreamingQueryListener </span><span>{
+</span><span>  </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">onQueryStarted</span><span>(</span><span style="color:#268bd2;">event</span><span>: </span><span style="color:#859900;">StreamingQueryListener</span><span>.</span><span style="color:#859900;">QueryStartedEvent</span><span>): </span><span style="color:#268bd2;">Unit </span><span>= {
+</span><span>  }
+</span><span>
+</span><span>  </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">onQueryProgress</span><span>(</span><span style="color:#268bd2;">event</span><span>: </span><span style="color:#859900;">StreamingQueryListener</span><span>.</span><span style="color:#859900;">QueryProgressEvent</span><span>): </span><span style="color:#268bd2;">Unit </span><span>= {
+</span><span>    </span><span style="color:#859900;">MyCustomSource</span><span>.</span><span style="color:#859900;">MY_METRIC_A</span><span>.setValue(event.progress.batchId)
+</span><span>  }
+</span><span>
+</span><span>  </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">onQueryTerminated</span><span>(</span><span style="color:#268bd2;">event</span><span>: </span><span style="color:#859900;">StreamingQueryListener</span><span>.</span><span style="color:#859900;">QueryTerminatedEvent</span><span>): </span><span style="color:#268bd2;">Unit </span><span>= {}
+</span><span>}
+</span><span>
+</span><span style="color:#268bd2;">object</span><span style="color:#b58900;"> MyListener </span><span>{
+</span><span>  </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">apply</span><span>(): </span><span style="color:#859900;">MyListener </span><span>= {
+</span><span>    </span><span style="color:#859900;">SparkEnv</span><span>.get.metricsSystem.registerSource(</span><span style="color:#859900;">MyCustomSource</span><span>)
+</span><span>    </span><span style="color:#859900;">new MyListener</span><span>()
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>Register code:</p>
+<pre data-lang="scala" style="background-color:#fdf6e3;color:#657b83;" class="language-scala "><code class="language-scala" data-lang="scala"><span>spark.streams.addListener(</span><span style="color:#859900;">MyListener</span><span>())
+</span></code></pre>
+<p>By this way, the metrics are added to the driver, so both pull and push are supported.</p>
+<h2 id="use-accumulators">Use Accumulators</h2>
+<p>Spark provides 2 Accumulator sources: <code>LongAccumulatorSource</code> and <code>DoubleAccumulatorSource</code> to expose accumulators as metrics.
+So we can collect stats into accumulators.</p>
+<pre data-lang="scala" style="background-color:#fdf6e3;color:#657b83;" class="language-scala "><code class="language-scala" data-lang="scala"><span style="color:#268bd2;">val acc </span><span>= spark.sparkContext.longAccumulator(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">acc</span><span style="color:#839496;">&quot;</span><span>)
+</span><span style="color:#859900;">LongAccumulatorSource</span><span>.register(spark.sparkContext, </span><span style="color:#859900;">Map</span><span>(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">acc</span><span style="color:#839496;">&quot;</span><span> -&gt; acc))
+</span></code></pre>
+<p>Metric examples:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>metrics_org_example_ScalaMain_driver_AccumulatorSource_acc_Number{type=&quot;gauges&quot;} 0
+</span><span>metrics_org_example_ScalaMain_driver_AccumulatorSource_acc_Value{type=&quot;gauges&quot;} 0
+</span></code></pre>
+<p>This way also works on driver, because executor will send accumulator values to driver through heartbeats.</p>
+<h2 id="use-sparkplugin">Use SparkPlugin</h2>
+<ol>
+<li>Create a SparkPlugin:</li>
+</ol>
+<pre data-lang="scala" style="background-color:#fdf6e3;color:#657b83;" class="language-scala "><code class="language-scala" data-lang="scala"><span style="color:#268bd2;">class</span><span style="color:#b58900;"> MyPlugin </span><span style="color:#859900;">extends </span><span style="color:#268bd2;">SparkPlugin </span><span>{
+</span><span>
+</span><span>  </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">driverPlugin</span><span>(): </span><span style="color:#859900;">DriverPlugin </span><span>= {
+</span><span>    </span><span style="color:#859900;">new DriverPlugin </span><span>{
+</span><span>      </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">registerMetrics</span><span>(</span><span style="color:#268bd2;">appId</span><span>: </span><span style="color:#859900;">String</span><span>, </span><span style="color:#268bd2;">pluginContext</span><span>: </span><span style="color:#859900;">PluginContext</span><span>): </span><span style="color:#268bd2;">Unit </span><span>= {
+</span><span>        pluginContext.metricRegistry().register(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">plugin_a</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#859900;">new Gauge</span><span>[</span><span style="color:#268bd2;">Long</span><span>](){
+</span><span>          </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">getValue</span><span>: </span><span style="color:#268bd2;">Long </span><span>= </span><span style="color:#859900;">System</span><span>.currentTimeMillis()
+</span><span>        })
+</span><span>      }
+</span><span>      }
+</span><span>  }
+</span><span>
+</span><span>  </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">executorPlugin</span><span>(): </span><span style="color:#859900;">ExecutorPlugin </span><span>= {
+</span><span>    </span><span style="color:#859900;">new ExecutorPlugin </span><span>{
+</span><span>      </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">init</span><span>(</span><span style="color:#268bd2;">ctx</span><span>: </span><span style="color:#859900;">PluginContext</span><span>, </span><span style="color:#268bd2;">extraConf</span><span>: </span><span style="color:#859900;">util</span><span>.</span><span style="color:#859900;">Map</span><span>[</span><span style="color:#859900;">String</span><span>, </span><span style="color:#859900;">String</span><span>]): </span><span style="color:#268bd2;">Unit </span><span>= {
+</span><span>        ctx.metricRegistry().register(</span><span style="color:#839496;">&quot;</span><span style="color:#2aa198;">plugin_b</span><span style="color:#839496;">&quot;</span><span>, </span><span style="color:#859900;">new Gauge</span><span>[</span><span style="color:#268bd2;">Long</span><span>]() {
+</span><span>          </span><span style="color:#586e75;">override </span><span style="color:#268bd2;">def </span><span style="color:#b58900;">getValue</span><span>: </span><span style="color:#268bd2;">Long </span><span>= </span><span style="color:#859900;">System</span><span>.currentTimeMillis()
+</span><span>        })
+</span><span>      }
+</span><span>    }
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<ol start="2">
+<li>Register it with config:</li>
+</ol>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>spark.plugins   org.example.MyPlugin
+</span></code></pre>
+<p>But by using this way, I can't get the executor metrics in the UI's URL. Some assumptions:</p>
+<ul>
+<li>executor heartbeat only contains metrics defined in <a href="https://github.com/apache/spark/blob/d03c6806102bbcfe852ab7c26f292662404d59f7/core/src/main/scala/org/apache/spark/metrics/ExecutorMetricType.scala#L216">ExecutorMetricType</a>, so the executor custom plugin metrics can't be collected by driver</li>
+<li>PrometheusServlet is only enabled in driver, so no UI endpoint in executor</li>
+<li>YARN only proxy the driver's UI, so even if executors have their UIs (they are not), we still can't get to them</li>
+<li>Other sinks can get these plugin metrics, such as Slf4jSink</li>
+<li>So we can still get these metrics using different sinks, such as JmxSink with Prometheus <a href="https://github.com/prometheus/jmx_exporter">JMX exporter</a>, but it's a little complicated</li>
+</ul>
+<p>Metric examples of PrometheusServlet:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>metrics_org_example_ScalaMain_driver_plugin_org_example_MyPlugin_plugin_a_Number{type=&quot;gauges&quot;} 1742030992311
+</span><span>metrics_org_example_ScalaMain_driver_plugin_org_example_MyPlugin_plugin_a_Value{type=&quot;gauges&quot;} 1742030992311
+</span></code></pre>
+<p>Metric example of Slf4jSink:</p>
+<pre style="background-color:#fdf6e3;color:#657b83;"><code><span>25/03/15 18:24:56 INFO metrics: type=GAUGE, name=org.example.ScalaMain.1.plugin.org.example.MyPlugin.plugin_b, value=1742034296615
+</span></code></pre>
+<h1 id="refs">Refs</h1>
+<ul>
+<li><a href="https://spark.apache.org/docs/3.5.5/monitoring.html#metrics">https://spark.apache.org/docs/3.5.5/monitoring.html#metrics</a></li>
+<li><a href="https://community.databricks.com/t5/data-engineering/azure-databricks-metrics-to-prometheus/td-p/71569">https://community.databricks.com/t5/data-engineering/azure-databricks-metrics-to-prometheus/td-p/71569</a></li>
+<li><a href="https://stackoverflow.com/questions/70989641/spark-executor-metrics-dont-reach-prometheus-sink">https://stackoverflow.com/questions/70989641/spark-executor-metrics-dont-reach-prometheus-sink</a></li>
+<li><a href="https://stackoverflow.com/questions/74562163/how-to-get-spark-streaming-metrics-like-input-rows-processed-rows-and-batch-dur">https://stackoverflow.com/questions/74562163/how-to-get-spark-streaming-metrics-like-input-rows-processed-rows-and-batch-dur</a></li>
+<li><a href="https://medium.com/@flyws1993/monitoring-databricks-clusters-with-prometheus-consul-f06be84bcf9f">https://medium.com/@flyws1993/monitoring-databricks-clusters-with-prometheus-consul-f06be84bcf9f</a></li>
+<li><a href="https://towardsdatascience.com/custom-kafka-streaming-metrics-using-apache-spark-prometheus-sink-9c04cf2ddaf1/">https://towardsdatascience.com/custom-kafka-streaming-metrics-using-apache-spark-prometheus-sink-9c04cf2ddaf1/</a></li>
+<li><a href="https://stackoverflow.com/questions/32843832/spark-streaming-custom-metrics">https://stackoverflow.com/questions/32843832/spark-streaming-custom-metrics</a></li>
+<li><a href="https://medium.com/@asharoni.kr/boosting-data-quality-monitoring-with-a-new-spark-native-approach-2ab430e71f98">https://medium.com/@asharoni.kr/boosting-data-quality-monitoring-with-a-new-spark-native-approach-2ab430e71f98</a></li>
+<li><a href="https://technology.inmobi.com/articles/2023/04/18/monitoring-streaming-jobs-the-right-way">https://technology.inmobi.com/articles/2023/04/18/monitoring-streaming-jobs-the-right-way</a></li>
+<li><a href="https://github.com/cerndb/SparkPlugins">https://github.com/cerndb/SparkPlugins</a></li>
+<li><a href="https://stackoverflow.com/questions/69823583/how-to-configure-a-custom-spark-plugin-in-databricks">https://stackoverflow.com/questions/69823583/how-to-configure-a-custom-spark-plugin-in-databricks</a></li>
+<li><a href="https://community.databricks.com/t5/data-engineering/how-to-provide-custom-class-extending-sparkplugin-executorplugin/td-p/11891">https://community.databricks.com/t5/data-engineering/how-to-provide-custom-class-extending-sparkplugin-executorplugin/td-p/11891</a></li>
+</ul>
+
+</main>
+
+</body>
+</html>
